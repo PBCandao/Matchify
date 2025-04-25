@@ -42,6 +42,19 @@ def log_event(user_id, event_type, details=None):
         socketio.emit('notification', payload, room=user_id)
     return event
 
+def write_log(event):
+    """
+    Append a raw event dict to the activity log without emitting.
+    """
+    activity_logs.append(event)
+
+def emit_notification(user_id, event):
+    """
+    Emit a 'notification' event directly with custom event payload.
+    """
+    if socketio:
+        socketio.emit('notification', event, room=user_id)
+
 def get_logs(user_id):
     """
     Retrieve all ActivityLog entries for a given user_id.
