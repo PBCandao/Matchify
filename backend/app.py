@@ -50,4 +50,13 @@ def suggestions():
 # WebSocket notifications are emitted via notifications module
 
 if __name__ == '__main__':
+    # ─── TEMPORARY TEST DATA ───
+    # so our /graph endpoint returns something immediately
+    from graph_logic import add_user, add_relationship
+
+    add_user('alice', name='Alice', roles=['Developer'], phoneHash='hash1')
+    add_user('bob', name='Bob', roles=['Investor'], phoneHash='hash2')
+    add_relationship('alice', 'bob', weight=1.0, status='connected')
+    # ─────────────────────────────
+
     socketio.run(app, host='0.0.0.0', port=5000)
