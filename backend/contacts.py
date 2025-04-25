@@ -9,6 +9,8 @@ import io
 import re
 
 import graph_logic
+import notifications
+from datetime import datetime
 
 try:
     import vobject
@@ -59,11 +61,39 @@ def request_intro(data):
     'from', 'to', 'via'. Returns a status dict.
     """
     # TODO: implement introduction logic
-    return {'status': 'requested', **data}
+    result = {'status': 'requested', **data}
+    # Notification: request introduction
+    event = {
+        'type': 'request_intro',
+        'from': data.get('from'),
+        'to': data.get('to'),
+        'via': data.get('via'),
+        'timestamp': datetime.utcnow().isoformat()
+    }
+    try:
+        notifications.write_log(event)
+        notifications.emit_notification(data.get('to'), event)
+    except Exception:
+        pass
+    return result
 
 def approve_intro(data):
     """
     Stub: approve one hop of an introduction. Returns a status dict.
     """
     # TODO: implement approval logic
-    return {'status': 'approved', **data}
+    result = {'status': 'approved', **data}
+    # Notification: approve introduction
+    event = {
+        'type': 'approve_intro',
+        'from': data.get('from'),
+        'to': data.get('to'),
+        'timestamp': datetime.utcnow().isoformat()
+    }
+    try:
+        notifications.write_log(event)
+        notifications.emit_notification(data.get('from'), event)
+        notifications.emit_notification(data.get('to'), event)
+    except Exception:
+        pass
+    return result
