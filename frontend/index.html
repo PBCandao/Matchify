@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Matchify Social Graph</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/static/style.css">
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <!-- Socket.IO client -->
   <script src="/socket.io/socket.io.js"></script>
-  <script src="graph.js" defer></script>
+  <script src="/static/graph.js" defer></script>
 </head>
 <body>
   <button id="hamburger" class="hamburger-btn">&#9776;</button>
@@ -33,7 +33,9 @@
       <span id="zoom-percent">100%</span>
       <div id="notif-dropdown" class="notif-dropdown">
         <button id="notif-btn" class="btn-notif" title="Notifications">514;<span id="notif-count">0</span></button>
-        <ul id="notif-list" class="notif-list hidden"></ul>
+        <ul id="notif-list" class="notif-list hidden">
+          <li class="see-all"><a href="/notifications">View All Notifications</a></li>
+        </ul>
       </div>
     </div>
     <div id="graph-container"></div>

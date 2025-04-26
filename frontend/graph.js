@@ -15,10 +15,11 @@ function fetchAndDraw(u, d) {
 // Global socket for real-time notifications
 const socket = io();
 socket.on('notification', n => {
-  // Update badge count
+  // Update badge count and ensure badge is visible
   const countSpan = document.getElementById('notif-count');
-  let cnt = parseInt(countSpan.textContent) || 0;
+  let cnt = parseInt(countSpan.textContent, 10) || 0;
   countSpan.textContent = ++cnt;
+  countSpan.style.display = 'inline-block';
   // Prepend notification to list
   const list = document.getElementById('notif-list');
   const li = document.createElement('li');
@@ -163,6 +164,11 @@ function showProfile(d) {
 }
 
 window.addEventListener('load', () => {
+  // Hide notification badge if count is zero
+  const countSpanInit = document.getElementById('notif-count');
+  if (countSpanInit && parseInt(countSpanInit.textContent, 10) === 0) {
+    countSpanInit.style.display = 'none';
+  }
   // Close popup handler
   // Close popup functions
   function closePopup() {

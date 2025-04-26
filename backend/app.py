@@ -13,7 +13,7 @@ import os
 from werkzeug.utils import secure_filename
 from fake_data import seed_data
 
-app = Flask(__name__, static_folder='../frontend', static_url_path='')
+app = Flask(__name__, static_folder='../frontend', static_url_path='/static')
 app.config['SECRET_KEY'] = 'super-secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
 # Initialize database and seed data
