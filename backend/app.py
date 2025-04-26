@@ -18,6 +18,11 @@ def serve_index():
     return app.send_static_file('index.html')
 # Initialize notifications module with SocketIO instance
 notifications.init_app(socketio)
+ 
+# Seed initial test data
+graph_logic.add_user('alice', name='Alice', roles=['Developer'], phoneHash='h1')
+graph_logic.add_user('bob', name='Bob', roles=['Investor'], phoneHash='h2')
+graph_logic.add_relationship('alice', 'bob', weight=2.5, status='connected')
 
 @app.route('/graph')
 def get_graph():
@@ -73,13 +78,5 @@ def add_relationship():
 # WebSocket notifications are emitted via notifications module
 
 if __name__ == '__main__':
-    # ─── TEMPORARY TEST DATA ───
-    # so our /graph endpoint returns something immediately
-    from graph_logic import add_user, add_relationship
-
-    add_user('alice', name='Alice', roles=['Developer'], phoneHash='hash1')
-    add_user('bob', name='Bob', roles=['Investor'], phoneHash='hash2')
-    add_relationship('alice', 'bob', weight=1.0, status='connected')
-    # ─────────────────────────────
 
     socketio.run(app, host='0.0.0.0', port=5000)

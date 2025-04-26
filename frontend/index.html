@@ -1,17 +1,32 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Matchify Graph</title>
+  <title>Matchify Social Graph</title>
+  <link rel="stylesheet" href="style.css">
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="graph.js" defer></script>
-  <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { width: 100%; height: 100%; display: block; }
-  </style>
 </head>
 <body>
-  <div id="graph-container"></div>
+  <div id="sidebar">
+    <h2>Menu</h2>
+    <ul>
+      <li>Profile</li>
+      <li>Contacts</li>
+      <li>Notifications</li>
+      <li>Settings</li>
+    </ul>
+  </div>
+  <div id="main-content">
+    <h1>Matchify Social Graph</h1>
+    <div id="graph-container"></div>
+  </div>
+  <div id="profile-popup" class="hidden">
+    <div class="popup-content">
+      <button id="close-popup">&times;</button>
+      <h2 id="popup-name"></h2>
+      <p><strong>Roles:</strong> <span id="popup-roles"></span></p>
+    </div>
+  </div>
 </body>
 </html>

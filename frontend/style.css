@@ -1,0 +1,24 @@
+/* Basic reset */
+body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
+
+/* Sidebar */
+#sidebar { position: absolute; top: 0; left: 0; bottom: 0; width: 200px; background: #2c3e50; color: #ecf0f1; padding: 20px; box-sizing: border-box; }
+#sidebar h2 { margin-top: 0; font-size: 18px; }
+#sidebar ul { list-style: none; padding: 0; margin: 10px 0; }
+#sidebar li { margin: 10px 0; cursor: pointer; }
+
+/* Main content */
+#main-content { position: absolute; top: 0; left: 200px; right: 0; bottom: 0; padding: 20px; box-sizing: border-box; }
+#main-content h1 { margin: 0 0 10px; font-size: 24px; }
+
+/* Graph container */
+#graph-container { width: 100%; height: calc(100% - 40px); background: #f9f9f9; border: 1px solid #ddd; }
+
+/* No connections message */
+.no-connections { font-size: 18px; color: #777; text-align: center; margin-top: 20px; }
+
+/* Profile popup */
+#profile-popup.hidden { display: none; }
+#profile-popup { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+.popup-content { position: relative; background: #fff; padding: 20px; border-radius: 5px; width: 300px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+#close-popup { position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer; }

@@ -1,4 +1,22 @@
+// Function to show profile popup
+function showProfile(d) {
+  const popup = document.getElementById('profile-popup');
+  const nameEl = document.getElementById('popup-name');
+  const rolesEl = document.getElementById('popup-roles');
+  if (nameEl) nameEl.textContent = d.name || d.id;
+  if (rolesEl) rolesEl.textContent = (d.roles || []).join(', ');
+  if (popup) popup.classList.remove('hidden');
+}
+
 window.addEventListener('load', () => {
+  // Close popup handler
+  const closeBtn = document.getElementById('close-popup');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      const popup = document.getElementById('profile-popup');
+      if (popup) popup.classList.add('hidden');
+    });
+  }
   fetch('/graph?user=alice&depth=1')
     .then(res => {
       if (!res.ok) throw new Error(res.statusText);
@@ -18,9 +36,17 @@ function drawGraph(nodes, links) {
     document.body.appendChild(container);
   }
   container.innerHTML = '';
+  // Show message if no connections
+  if (!links || links.length === 0) {
+    container.innerHTML = '<p class="no-connections">No connections yet.</p>';
+    return;
+  }
   const width = container.clientWidth || window.innerWidth;
   const height = container.clientHeight || window.innerHeight;
   if (typeof d3 !== 'undefined') {
+    // Color scale based on user roles
+    const rolesList = Array.from(new Set(nodes.flatMap(d => d.roles || [])));
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10).domain(rolesList);
     const svg = d3.select(container).append('svg')
       .attr('width', width)
       .attr('height', height);
@@ -33,11 +59,12 @@ function drawGraph(nodes, links) {
       .data(nodes)
       .enter().append('circle')
       .attr('r', 10)
-      .attr('fill', '#69b3a2');
+      .attr('fill', d => colorScale((d.roles && d.roles[0]) || d.id))
+      .on('click', (event, d) => showProfile(d));
     const label = svg.append('g').selectAll('text')
       .data(nodes)
       .enter().append('text')
-      .text(d => d.id)
+      .text(d => d.name || d.id)
       .attr('font-size', 10)
       .attr('dx', 12)
       .attr('dy', 4);
