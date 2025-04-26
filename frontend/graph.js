@@ -1,4 +1,18 @@
 // Function to show profile popup or bottom sheet
+// Global state for graph navigation
+let currentDepth = 1;
+// Fetch and draw graph for given user and depth
+function fetchAndDraw(u, d) {
+  currentDepth = d;
+  fetch(`/graph?user=${encodeURIComponent(u)}&depth=${encodeURIComponent(d)}`)
+    .then(res => {
+      if (!res.ok) throw new Error(res.statusText);
+      return res.json();
+    })
+    .then(data => drawGraph(data.nodes, data.links))
+    .catch(err => console.error('Error loading graph data:', err));
+}
+// Function to show profile popup or bottom sheet
 function showProfile(d) {
   const popup = document.getElementById('profile-popup');
   if (!popup) return;
@@ -75,18 +89,11 @@ window.addEventListener('load', () => {
       overlay.classList.add('hidden');
     });
   }
+  // Initialize with URL params or defaults, then fetch graph
   const params = new URLSearchParams(window.location.search);
-  const user = params.get('user') || 'alice';
-  const depth = params.get('depth') || '1';
-  fetch(`/graph?user=${encodeURIComponent(user)}&depth=${encodeURIComponent(depth)}`)
-    .then(res => {
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    })
-    .then(data => {
-      drawGraph(data.nodes, data.links);
-    })
-    .catch(err => console.error('Error loading graph data:', err));
+  const user = params.get('user') || 'me';
+  const depth = parseInt(params.get('depth'), 10) || 1;
+  fetchAndDraw(user, depth);
 });
 
 function drawGraph(nodes, links) {
@@ -108,27 +115,43 @@ function drawGraph(nodes, links) {
     // Color scale based on user roles
     const rolesList = Array.from(new Set(nodes.flatMap(d => d.roles || [])));
     const colorScale = d3.scaleOrdinal(d3.schemeCategory10).domain(rolesList);
+    // Create SVG with zoomable g
     const svg = d3.select(container).append('svg')
       .attr('width', width)
       .attr('height', height);
-    const link = svg.append('g').selectAll('line')
+    const gMain = svg.append('g');
+    // Draw links
+    const link = gMain.append('g').selectAll('line')
       .data(links)
       .enter().append('line')
       .attr('stroke', '#999')
       .attr('stroke-width', 1);
-    const node = svg.append('g').selectAll('circle')
+    // Draw nodes
+    const node = gMain.append('g').selectAll('circle')
       .data(nodes)
       .enter().append('circle')
       .attr('r', 10)
       .attr('fill', d => colorScale((d.roles && d.roles[0]) || d.id))
       .on('click', (event, d) => showProfile(d));
-    const label = svg.append('g').selectAll('text')
+    // Double-click to recenter graph
+    node.on('dblclick', (event, d) => {
+      fetchAndDraw(d.id, currentDepth);
+    });
+    // Draw labels
+    const label = gMain.append('g').selectAll('text')
       .data(nodes)
       .enter().append('text')
       .text(d => d.name || d.id)
       .attr('font-size', 10)
       .attr('dx', 12)
       .attr('dy', 4);
+    // Apply zoom and pan
+    const zoomBehavior = d3.zoom()
+      .scaleExtent([0.5, 5])
+      .on('zoom', (event) => {
+        gMain.attr('transform', event.transform);
+      });
+    svg.call(zoomBehavior);
     const simulation = d3.forceSimulation(nodes)
       .force('link', d3.forceLink(links).id(d => d.id).distance(100))
       .force('charge', d3.forceManyBody().strength(-200))
