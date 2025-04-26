@@ -79,7 +79,7 @@
         // Avatar
         const avatarTd = document.createElement('td');
         const img = document.createElement('img');
-        img.src = contact.avatarUrl;
+        img.src = contact.avatar_url || contact.avatarUrl;
         img.alt = contact.name;
         img.width = 32;
         img.height = 32;
@@ -117,7 +117,7 @@
           stackDiv.classList.add('avatar-stack');
           common.slice(0,3).forEach(fid => {
             const fimg = document.createElement('img');
-            fimg.src = profileMap[fid]?.avatarUrl;
+            fimg.src = profileMap[fid]?.avatar_url || profileMap[fid]?.avatarUrl;
             fimg.title = profileMap[fid]?.name;
             stackDiv.appendChild(fimg);
           });

@@ -170,6 +170,14 @@ def update_user_profile(user_id):
     # Return updated profile
     profile = db.get_user_profile(user_id)
     return jsonify({'status': 'ok', 'profile': profile})
+    
+# Endpoint to retrieve notifications for current user ('me' by default)
+@app.route('/notifications')
+def get_notifications():
+    """Return list of ActivityLog entries for the current user."""
+    # For now, assume user 'me'
+    logs = notifications.get_logs('me')
+    return jsonify({'notifications': logs})
 
 if __name__ == '__main__':
 

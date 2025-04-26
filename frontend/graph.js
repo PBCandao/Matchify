@@ -9,14 +9,17 @@ function fetchAndDraw(u, d) {
       if (!res.ok) throw new Error(res.statusText);
       return res.json();
     })
-    .then(data => drawGraph(data.nodes, data.links))
+    .then(data => {
+      console.log('Graph data:', data);
+      drawGraph(data.nodes, data.links);
+    })
     .catch(err => console.error('Error loading graph data:', err));
 }
 // Global socket for real-time notifications
 const socket = io();
 socket.on('notification', n => {
   // Update badge count and ensure badge is visible
-  const countSpan = document.getElementById('notif-count');
+  const countSpan = document.getElementById('notif-badge') || document.getElementById('notif-count');
   let cnt = parseInt(countSpan.textContent, 10) || 0;
   countSpan.textContent = ++cnt;
   countSpan.style.display = 'inline-block';
@@ -165,9 +168,10 @@ function showProfile(d) {
 
 window.addEventListener('load', () => {
   // Hide notification badge if count is zero
-  const countSpanInit = document.getElementById('notif-count');
-  if (countSpanInit && parseInt(countSpanInit.textContent, 10) === 0) {
-    countSpanInit.style.display = 'none';
+  // Hide notification badge if count is zero
+  const badgeInit = document.getElementById('notif-badge') || document.getElementById('notif-count');
+  if (badgeInit && parseInt(badgeInit.textContent, 10) === 0) {
+    badgeInit.style.display = 'none';
   }
   // Close popup handler
   // Close popup functions
@@ -220,11 +224,43 @@ window.addEventListener('load', () => {
   const zoomOut = document.getElementById('zoom-out');
   if (zoomIn) zoomIn.addEventListener('click', () => adjustZoom(1.2));
   if (zoomOut) zoomOut.addEventListener('click', () => adjustZoom(0.8));
-  // Notification dropdown toggle
+  // Notification dropdown toggle with fetch on open
   const notifBtn = document.getElementById('notif-btn');
   const notifList = document.getElementById('notif-list');
   if (notifBtn && notifList) {
-    notifBtn.addEventListener('click', () => notifList.classList.toggle('hidden'));
+    // Rename any existing count badge id to badge
+    const oldCount = document.getElementById('notif-count');
+    if (oldCount) oldCount.id = 'notif-badge';
+    // Remove any static view-all entries
+    Array.from(notifList.querySelectorAll('li')).forEach(li => {
+      if (li.textContent.includes('View All Notifications')) li.remove();
+    });
+    notifBtn.addEventListener('click', async () => {
+      const isHidden = notifList.classList.toggle('hidden');
+      if (!isHidden) {
+        try {
+          const res = await fetch('/notifications');
+          if (!res.ok) throw new Error(res.statusText);
+          const json = await res.json();
+          console.log('Fetched notifications:', json);
+          notifList.innerHTML = '';
+          (json.notifications || []).forEach(n => {
+            const li = document.createElement('li');
+            li.textContent = n.details?.message || n.type || '';
+            notifList.appendChild(li);
+          });
+          // Append 'View All' link
+          const seeAllLi = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = '/notifications';
+          a.textContent = 'View All Notifications';
+          seeAllLi.appendChild(a);
+          notifList.appendChild(seeAllLi);
+        } catch (err) {
+          console.error('Error fetching notifications:', err);
+        }
+      }
+    });
   }
   // Locked-preview close button
   const closeLockedBtn = document.querySelector('#locked-preview .close-locked');
