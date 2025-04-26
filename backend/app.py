@@ -10,9 +10,12 @@ import contacts
 import recommendations
 import notifications
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend', static_url_path='')
 app.config['SECRET_KEY'] = 'super-secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
+@app.route('/')
+def serve_index():
+    return app.send_static_file('index.html')
 # Initialize notifications module with SocketIO instance
 notifications.init_app(socketio)
 
@@ -46,6 +49,26 @@ def suggestions():
     user_id = request.args.get('user')
     suggestions_list = recommendations.get_suggestions(user_id)
     return jsonify({'suggestions': suggestions_list})
+
+@app.route('/add_user', methods=['POST'])
+def add_user():
+    data = request.get_json() or {}
+    user_id = data.get('id')
+    name = data.get('name')
+    roles = data.get('roles')
+    phone_hash = data.get('phoneHash')
+    graph_logic.add_user(user_id, name=name, roles=roles, phoneHash=phone_hash)
+    return jsonify({'status': 'ok'})
+
+@app.route('/add_relationship', methods=['POST'])
+def add_relationship():
+    data = request.get_json() or {}
+    source = data.get('source')
+    target = data.get('target')
+    weight = data.get('weight')
+    status = data.get('status')
+    graph_logic.add_relationship(source, target, weight=weight, status=status)
+    return jsonify({'status': 'ok'})
 
 # WebSocket notifications are emitted via notifications module
 
