@@ -1,23 +1,81 @@
-// Function to show profile popup
+// Function to show profile popup or bottom sheet
 function showProfile(d) {
   const popup = document.getElementById('profile-popup');
-  const nameEl = document.getElementById('popup-name');
-  const rolesEl = document.getElementById('popup-roles');
-  if (nameEl) nameEl.textContent = d.name || d.id;
-  if (rolesEl) rolesEl.textContent = (d.roles || []).join(', ');
-  if (popup) popup.classList.remove('hidden');
+  if (!popup) return;
+  // Fetch full profile data
+  fetch(`/profile/${encodeURIComponent(d.id)}`)
+    .then(res => res.json())
+    .then(data => {
+      // Populate popup fields
+      document.getElementById('popup-avatar').src = data.avatarUrl;
+      document.getElementById('popup-name').textContent = data.name;
+      const rolesDiv = document.getElementById('popup-roles');
+      rolesDiv.innerHTML = '';
+      (data.roles || []).forEach((role, idx) => {
+        const badge = document.createElement('span');
+        badge.className = 'role-badge';
+        badge.title = role;
+        badge.style.background = d3.schemeCategory10[idx % 10];
+        rolesDiv.appendChild(badge);
+      });
+      document.getElementById('popup-bio').textContent = data.bio;
+      document.getElementById('popup-looking-text').textContent = data.lookingFor;
+      document.getElementById('popup-offering-text').textContent = data.offering;
+      const fullBtn = document.getElementById('popup-full-profile');
+      fullBtn.href = `profile.html?user=${encodeURIComponent(d.id)}`;
+    })
+    .catch(err => console.error('Error loading profile:', err));
+  // Show popup
+  popup.classList.remove('hidden');
+  if (window.innerWidth <= 768) popup.classList.add('show');
 }
 
 window.addEventListener('load', () => {
   // Close popup handler
+  // Close popup functions
+  function closePopup() {
+    const popup = document.getElementById('profile-popup');
+    if (!popup) return;
+    popup.classList.add('hidden');
+    popup.classList.remove('show');
+  }
   const closeBtn = document.getElementById('close-popup');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      const popup = document.getElementById('profile-popup');
-      if (popup) popup.classList.add('hidden');
+  if (closeBtn) closeBtn.addEventListener('click', closePopup);
+  // Close on outside click
+  const popup = document.getElementById('profile-popup');
+  if (popup) {
+    popup.addEventListener('click', e => {
+      if (e.target === popup) closePopup();
+    });
+    // Swipe down to close on mobile
+    const content = popup.querySelector('.popup-content');
+    let startY = 0;
+    if (content) {
+      content.addEventListener('touchstart', e => { startY = e.touches[0].clientY; });
+      content.addEventListener('touchmove', e => {
+        const deltaY = e.touches[0].clientY - startY;
+        if (deltaY > 100) closePopup();
+      });
+    }
+  }
+  // Sidebar toggle for mobile
+  const hamburger = document.getElementById('hamburger');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (hamburger && sidebar && overlay) {
+    hamburger.addEventListener('click', () => {
+      sidebar.classList.add('open');
+      overlay.classList.remove('hidden');
+    });
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      overlay.classList.add('hidden');
     });
   }
-  fetch('/graph?user=alice&depth=1')
+  const params = new URLSearchParams(window.location.search);
+  const user = params.get('user') || 'alice';
+  const depth = params.get('depth') || '1';
+  fetch(`/graph?user=${encodeURIComponent(user)}&depth=${encodeURIComponent(depth)}`)
     .then(res => {
       if (!res.ok) throw new Error(res.statusText);
       return res.json();

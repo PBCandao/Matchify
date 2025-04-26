@@ -2,30 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Matchify Social Graph</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="graph.js" defer></script>
 </head>
 <body>
+  <button id="hamburger" class="hamburger-btn">&#9776;</button>
   <div id="sidebar">
     <h2>Menu</h2>
     <ul>
-      <li>Profile</li>
-      <li>Contacts</li>
-      <li>Notifications</li>
-      <li>Settings</li>
+      <li><a href="/">Home</a></li>
+      <li><a href="/contacts">Contacts</a></li>
+      <li><a href="#">Notifications</a></li>
+      <li><a href="#">Settings</a></li>
+      <li><a href="profile.html?user=me">Profile</a></li>
     </ul>
   </div>
+  <div id="sidebar-overlay" class="hidden"></div>
   <div id="main-content">
     <h1>Matchify Social Graph</h1>
     <div id="graph-container"></div>
   </div>
   <div id="profile-popup" class="hidden">
     <div class="popup-content">
-      <button id="close-popup">&times;</button>
+      <button id="close-popup" class="close-btn">&times;</button>
+      <img id="popup-avatar" class="avatar" src="" alt="Avatar" />
       <h2 id="popup-name"></h2>
-      <p><strong>Roles:</strong> <span id="popup-roles"></span></p>
+      <div id="popup-roles" class="roles"></div>
+      <p id="popup-bio"></p>
+      <div id="popup-looking" class="popup-section"><h5>Looking For</h5><p id="popup-looking-text"></p></div>
+      <div id="popup-offering" class="popup-section"><h5>Offering</h5><p id="popup-offering-text"></p></div>
+      <a id="popup-full-profile" class="btn btn-primary">View Full Profile</a>
     </div>
   </div>
 </body>

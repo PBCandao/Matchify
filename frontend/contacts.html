@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your Contacts - Matchify Social Graph</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Avatar stack for common friends */
+    .avatar-stack { display: flex; align-items: center; }
+    .avatar-stack img { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #fff; margin-left: -8px; }
+    .avatar-stack .more-count { width: 32px; height: 32px; border-radius: 50%; background: #6c757d; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; margin-left: -8px; }
+  </style>
+</head>
+<body>
+  <button id="hamburger" class="hamburger-btn">&#9776;</button>
+  <div id="sidebar">
+    <h2>Menu</h2>
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/contacts">Contacts</a></li>
+      <li><a href="#">Notifications</a></li>
+      <li><a href="#">Settings</a></li>
+      <li><a href="profile.html?user=me">Profile</a></li>
+    </ul>
+  </div>
+  <div id="sidebar-overlay" class="hidden"></div>
+  <div id="main-content" class="container-fluid">
+    <h1 class="mt-4">Your Contacts</h1>
+    <p>Your contacts are people you are directly connected with. Explore your network, discover common friends, and open their profiles or graph connections.</p>
+    <div id="contacts-container" class="mt-4">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Main Role</th>
+              <th>Common Friends</th>
+              <th>View Graph</th>
+              <th>View Profile</th>
+            </tr>
+          </thead>
+          <tbody id="contacts-table-body">
+            <!-- Rows populated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Mock contact data
+    const contacts = [
+      { id: 'alice', name: 'Alice Smith', roles: ['Developer'], commonFriends: ['bob'], profileUrl: 'profile.html?user=alice' },
+      { id: 'bob', name: 'Bob Johnson', roles: ['Investor', 'Mentor', 'Advisor'], commonFriends: ['alice', 'charlie', 'dana', 'eve'], profileUrl: 'profile.html?user=bob' },
+      { id: 'charlie', name: 'Charlie Brown', roles: ['Designer'], commonFriends: [], profileUrl: 'profile.html?user=charlie' },
+      { id: 'dana', name: 'Dana Scully', roles: ['Analyst', 'Researcher'], commonFriends: ['alice', 'bob', 'charlie'], profileUrl: 'profile.html?user=dana' }
+    ];
+
+    function getAvatar(name) {
+      const initial = name.charAt(0).toUpperCase();
+      return `https://via.placeholder.com/32?text=${initial}`;
+    }
+
+    function renderContacts() {
+      const tbody = document.getElementById('contacts-table-body');
+      tbody.innerHTML = '';
+      contacts.forEach(contact => {
+        const tr = document.createElement('tr');
+
+        // Name column
+        const nameTd = document.createElement('td');
+        const nameLink = document.createElement('a');
+        nameLink.href = contact.profileUrl;
+        nameLink.textContent = contact.name;
+        nameTd.appendChild(nameLink);
+        tr.appendChild(nameTd);
+
+        // Main Role
+        const roleTd = document.createElement('td');
+        const mainRole = contact.roles[0] || '';
+        roleTd.textContent = mainRole;
+        if (contact.roles.length > 1) {
+          const more = document.createElement('span');
+          more.textContent = ` +${contact.roles.length - 1}`;
+          more.classList.add('text-muted');
+          roleTd.appendChild(more);
+        }
+        tr.appendChild(roleTd);
+
+        // Common Friends
+        const friendsTd = document.createElement('td');
+        const fCount = contact.commonFriends.length;
+        if (fCount === 0) {
+          friendsTd.textContent = '-';
+        } else {
+          const stackDiv = document.createElement('div');
+          stackDiv.classList.add('avatar-stack');
+          contact.commonFriends.slice(0, 3).forEach(f => {
+            const img = document.createElement('img');
+            img.src = getAvatar(f);
+            img.title = f;
+            stackDiv.appendChild(img);
+          });
+          if (fCount > 3) {
+            const moreDiv = document.createElement('div');
+            moreDiv.classList.add('more-count');
+            moreDiv.textContent = `+${fCount - 3}`;
+            stackDiv.appendChild(moreDiv);
+          }
+          friendsTd.appendChild(stackDiv);
+        }
+        tr.appendChild(friendsTd);
+
+        // View Graph
+        const graphTd = document.createElement('td');
+        const gBtn = document.createElement('a');
+        gBtn.href = `/?user=${encodeURIComponent(contact.id)}`;
+        gBtn.textContent = 'Graph';
+        gBtn.classList.add('btn', 'btn-sm', 'btn-outline-primary');
+        graphTd.appendChild(gBtn);
+        tr.appendChild(graphTd);
+
+        // View Profile
+        const profileTd = document.createElement('td');
+        const pBtn = document.createElement('a');
+        pBtn.href = contact.profileUrl;
+        pBtn.textContent = 'Profile';
+        pBtn.classList.add('btn', 'btn-sm', 'btn-primary');
+        profileTd.appendChild(pBtn);
+        tr.appendChild(profileTd);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', renderContacts);
+    // Sidebar toggle for mobile
+    const hamburger = document.getElementById('hamburger');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (hamburger && sidebar && overlay) {
+      hamburger.addEventListener('click', () => {
+        sidebar.classList.add('open');
+        overlay.classList.remove('hidden');
+      });
+      overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.add('hidden');
+      });
+    }
+  </script>
+</body>
+</html>

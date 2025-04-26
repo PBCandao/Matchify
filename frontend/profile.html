@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User Profile</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container mt-4">
+    <button id="back-btn" class="btn btn-outline-secondary mb-3">&larr; Back to Contacts</button>
+    <div id="profile-container" class="text-center">
+      <img id="avatar" src="" alt="Avatar" class="rounded-circle mb-3" width="150" height="150">
+      <h1 id="name"></h1>
+      <div id="roles" class="mb-3"></div>
+      <p id="bio" class="mb-4"></p>
+      <div id="looking-for" class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Looking For</h5>
+          <p class="card-text" id="looking-for-text"></p>
+        </div>
+      </div>
+      <div id="offering" class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Offering</h5>
+          <p class="card-text" id="offering-text"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Bootstrap JS bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function getQueryParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+    async function loadProfile() {
+      let user = getQueryParam('user');
+      if (!user) {
+        alert('No user specified');
+        return;
+      }
+      const url = `/profile/${encodeURIComponent(user)}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Profile not found');
+        const data = await res.json();
+        document.getElementById('avatar').src = data.avatarUrl;
+        document.getElementById('name').textContent = data.name;
+        const rolesDiv = document.getElementById('roles');
+        rolesDiv.innerHTML = '';
+        if (data.roles && data.roles.length) {
+          // Main role badge
+          const mainBadge = document.createElement('span');
+          mainBadge.className = 'badge bg-primary fs-5 me-2';
+          mainBadge.textContent = data.roles[0];
+          rolesDiv.appendChild(mainBadge);
+          // Other roles
+          data.roles.slice(1).forEach(role => {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-secondary me-1';
+            badge.textContent = role;
+            rolesDiv.appendChild(badge);
+          });
+        }
+        document.getElementById('bio').textContent = data.bio;
+        document.getElementById('looking-for-text').textContent = data.lookingFor;
+        document.getElementById('offering-text').textContent = data.offering;
+      } catch (err) {
+        console.error(err);
+        document.getElementById('profile-container').innerHTML = '<p class="text-danger">Error loading profile.</p>';
+      }
+    }
+    document.getElementById('back-btn').addEventListener('click', () => {
+      window.location.href = '/contacts';
+    });
+    document.addEventListener('DOMContentLoaded', loadProfile);
+  </script>
+</body>
+</html>

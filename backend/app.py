@@ -16,6 +16,10 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 @app.route('/')
 def serve_index():
     return app.send_static_file('index.html')
+
+@app.route('/contacts')
+def serve_contacts():
+    return app.send_static_file('contacts.html')
 # Initialize notifications module with SocketIO instance
 notifications.init_app(socketio)
  
@@ -76,6 +80,65 @@ def add_relationship():
     return jsonify({'status': 'ok'})
 
 # WebSocket notifications are emitted via notifications module
+# Mock profile data
+PROFILES = {
+    'alice': {
+        'id': 'alice',
+        'name': 'Alice Smith',
+        'roles': ['Developer'],
+        'bio': 'Software developer with a passion for building social apps.',
+        'lookingFor': 'Mentors in cybersecurity.',
+        'offering': 'Insights into modern web development.',
+        'avatarUrl': 'https://via.placeholder.com/150?text=AS'
+    },
+    'bob': {
+        'id': 'bob',
+        'name': 'Bob Johnson',
+        'roles': ['Investor'],
+        'bio': 'Seasoned investor focusing on tech startups.',
+        'lookingFor': 'Rising entrepreneurs to support.',
+        'offering': 'Funding and mentorship.',
+        'avatarUrl': 'https://via.placeholder.com/150?text=BJ'
+    },
+    'charlie': {
+        'id': 'charlie',
+        'name': 'Charlie Brown',
+        'roles': ['Designer'],
+        'bio': 'Creative designer specializing in UX/UI.',
+        'lookingFor': 'Collaborations on mobile apps.',
+        'offering': 'Design consultations.',
+        'avatarUrl': 'https://via.placeholder.com/150?text=CB'
+    },
+    'dana': {
+        'id': 'dana',
+        'name': 'Dana Scully',
+        'roles': ['Analyst', 'Researcher'],
+        'bio': 'Data analyst with a keen eye for insights.',
+        'lookingFor': 'Challenging research projects.',
+        'offering': 'In-depth analytics and reports.',
+        'avatarUrl': 'https://via.placeholder.com/150?text=DS'
+    },
+    'me': {
+        'id': 'me',
+        'name': 'My Name',
+        'roles': ['Developer', 'Mentor'],
+        'bio': 'This is my profile summary.',
+        'lookingFor': 'Networking opportunities.',
+        'offering': 'Guidance to new developers.',
+        'avatarUrl': 'https://via.placeholder.com/150?text=ME'
+    }
+}
+
+@app.route('/profile/me')
+def get_my_profile():
+    return jsonify(PROFILES.get('me', {}))
+
+@app.route('/profile/<user_id>')
+def get_user_profile(user_id):
+    profile = PROFILES.get(user_id)
+    if not profile:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify(profile)
 
 if __name__ == '__main__':
 
