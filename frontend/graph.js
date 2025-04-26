@@ -18,9 +18,12 @@ function showProfile(d) {
         badge.style.background = d3.schemeCategory10[idx % 10];
         rolesDiv.appendChild(badge);
       });
-      document.getElementById('popup-bio').textContent = data.bio;
-      document.getElementById('popup-looking-text').textContent = data.lookingFor;
+      document.getElementById('popup-bio').textContent = data.bio_short;
+      document.getElementById('popup-looking-text').textContent = data.looking_for;
       document.getElementById('popup-offering-text').textContent = data.offering;
+      const telLink = document.getElementById('popup-telegram');
+      telLink.href = `https://t.me/${data.telegram}`;
+      telLink.textContent = data.telegram;
       const fullBtn = document.getElementById('popup-full-profile');
       fullBtn.href = `profile.html?user=${encodeURIComponent(d.id)}`;
     })

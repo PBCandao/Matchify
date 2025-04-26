@@ -35,6 +35,7 @@
         <table class="table table-hover align-middle">
           <thead>
             <tr>
+              <th>Avatar</th>
               <th>Name</th>
               <th>Main Role</th>
               <th>Common Friends</th>
@@ -52,38 +53,53 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Mock contact data
-    const contacts = [
-      { id: 'alice', name: 'Alice Smith', roles: ['Developer'], commonFriends: ['bob'], profileUrl: 'profile.html?user=alice' },
-      { id: 'bob', name: 'Bob Johnson', roles: ['Investor', 'Mentor', 'Advisor'], commonFriends: ['alice', 'charlie', 'dana', 'eve'], profileUrl: 'profile.html?user=bob' },
-      { id: 'charlie', name: 'Charlie Brown', roles: ['Designer'], commonFriends: [], profileUrl: 'profile.html?user=charlie' },
-      { id: 'dana', name: 'Dana Scully', roles: ['Analyst', 'Researcher'], commonFriends: ['alice', 'bob', 'charlie'], profileUrl: 'profile.html?user=dana' }
-    ];
-
-    function getAvatar(name) {
-      const initial = name.charAt(0).toUpperCase();
-      return `https://via.placeholder.com/32?text=${initial}`;
+    async function loadContacts() {
+      try {
+        const [meRes, contactsRes] = await Promise.all([
+          fetch('/profile/me'),
+          fetch('/api/contacts')
+        ]);
+        const me = await meRes.json();
+        const contacts = await contactsRes.json();
+        renderContacts(me, contacts);
+      } catch (err) {
+        console.error('Error loading contacts:', err);
+      }
     }
 
-    function renderContacts() {
+    function renderContacts(me, contacts) {
       const tbody = document.getElementById('contacts-table-body');
       tbody.innerHTML = '';
+      const meContacts = me.contacts || [];
+      const profileMap = {};
+      contacts.forEach(c => profileMap[c.id] = c);
       contacts.forEach(contact => {
         const tr = document.createElement('tr');
 
-        // Name column
+        // Avatar
+        const avatarTd = document.createElement('td');
+        const img = document.createElement('img');
+        img.src = contact.avatarUrl;
+        img.alt = contact.name;
+        img.width = 32;
+        img.height = 32;
+        img.classList.add('rounded-circle');
+        avatarTd.appendChild(img);
+        tr.appendChild(avatarTd);
+
+        // Name
         const nameTd = document.createElement('td');
         const nameLink = document.createElement('a');
-        nameLink.href = contact.profileUrl;
+        nameLink.href = `profile.html?user=${encodeURIComponent(contact.id)}`;
         nameLink.textContent = contact.name;
         nameTd.appendChild(nameLink);
         tr.appendChild(nameTd);
 
         // Main Role
         const roleTd = document.createElement('td');
-        const mainRole = contact.roles[0] || '';
+        const mainRole = contact.roles && contact.roles[0] || '';
         roleTd.textContent = mainRole;
-        if (contact.roles.length > 1) {
+        if (contact.roles && contact.roles.length > 1) {
           const more = document.createElement('span');
           more.textContent = ` +${contact.roles.length - 1}`;
           more.classList.add('text-muted');
@@ -93,22 +109,22 @@
 
         // Common Friends
         const friendsTd = document.createElement('td');
-        const fCount = contact.commonFriends.length;
-        if (fCount === 0) {
+        const common = (contact.contacts || []).filter(id => id !== 'me' && meContacts.includes(id));
+        if (!common.length) {
           friendsTd.textContent = '-';
         } else {
           const stackDiv = document.createElement('div');
           stackDiv.classList.add('avatar-stack');
-          contact.commonFriends.slice(0, 3).forEach(f => {
-            const img = document.createElement('img');
-            img.src = getAvatar(f);
-            img.title = f;
-            stackDiv.appendChild(img);
+          common.slice(0,3).forEach(fid => {
+            const fimg = document.createElement('img');
+            fimg.src = profileMap[fid]?.avatarUrl;
+            fimg.title = profileMap[fid]?.name;
+            stackDiv.appendChild(fimg);
           });
-          if (fCount > 3) {
+          if (common.length > 3) {
             const moreDiv = document.createElement('div');
             moreDiv.classList.add('more-count');
-            moreDiv.textContent = `+${fCount - 3}`;
+            moreDiv.textContent = `+${common.length - 3}`;
             stackDiv.appendChild(moreDiv);
           }
           friendsTd.appendChild(stackDiv);
@@ -118,7 +134,7 @@
         // View Graph
         const graphTd = document.createElement('td');
         const gBtn = document.createElement('a');
-        gBtn.href = `/?user=${encodeURIComponent(contact.id)}`;
+        gBtn.href = `/?user=${encodeURIComponent(contact.id)}&depth=2`;
         gBtn.textContent = 'Graph';
         gBtn.classList.add('btn', 'btn-sm', 'btn-outline-primary');
         graphTd.appendChild(gBtn);
@@ -127,7 +143,7 @@
         // View Profile
         const profileTd = document.createElement('td');
         const pBtn = document.createElement('a');
-        pBtn.href = contact.profileUrl;
+        pBtn.href = `profile.html?user=${encodeURIComponent(contact.id)}`;
         pBtn.textContent = 'Profile';
         pBtn.classList.add('btn', 'btn-sm', 'btn-primary');
         profileTd.appendChild(pBtn);
@@ -137,21 +153,23 @@
       });
     }
 
-    document.addEventListener('DOMContentLoaded', renderContacts);
-    // Sidebar toggle for mobile
-    const hamburger = document.getElementById('hamburger');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (hamburger && sidebar && overlay) {
-      hamburger.addEventListener('click', () => {
-        sidebar.classList.add('open');
-        overlay.classList.remove('hidden');
-      });
-      overlay.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        overlay.classList.add('hidden');
-      });
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      loadContacts();
+      // Sidebar toggle for mobile
+      const hamburger = document.getElementById('hamburger');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      if (hamburger && sidebar && overlay) {
+        hamburger.addEventListener('click', () => {
+          sidebar.classList.add('open');
+          overlay.classList.remove('hidden');
+        });
+        overlay.addEventListener('click', () => {
+          sidebar.classList.remove('open');
+          overlay.classList.add('hidden');
+        });
+      }
+    });
   </script>
 </body>
 </html>

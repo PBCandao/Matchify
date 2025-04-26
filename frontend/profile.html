@@ -11,6 +11,7 @@
 <body>
   <div class="container mt-4">
     <button id="back-btn" class="btn btn-outline-secondary mb-3">&larr; Back to Contacts</button>
+    <button id="edit-btn" class="btn btn-primary ms-2 mb-3" style="display:none;">Edit Profile</button>
     <div id="profile-container" class="text-center">
       <img id="avatar" src="" alt="Avatar" class="rounded-circle mb-3" width="150" height="150">
       <h1 id="name"></h1>
@@ -28,37 +29,75 @@
           <p class="card-text" id="offering-text"></p>
         </div>
       </div>
+      <p>Telegram: <a id="telegram-link" href="" target="_blank"></a></p>
     </div>
+  </div>
+  <div id="edit-form-container" class="container mt-4" style="display:none;">
+    <form id="edit-form" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="avatar-input" class="form-label">Avatar</label>
+        <input type="file" id="avatar-input" name="avatar" class="form-control">
+      </div>
+      <div class="mb-3">
+        <label for="roles-select" class="form-label">Roles</label>
+        <select id="roles-select" name="roles" class="form-select" multiple></select>
+      </div>
+      <div class="mb-3">
+        <label for="main-role-select" class="form-label">Main Role</label>
+        <select id="main-role-select" name="main_role" class="form-select"></select>
+      </div>
+      <div class="mb-3">
+        <label for="bio_long-input" class="form-label">Full Bio</label>
+        <textarea id="bio_long-input" name="bio_long" class="form-control"></textarea>
+      </div>
+      <div class="mb-3">
+        <label for="looking_for-input" class="form-label">Looking For</label>
+        <input type="text" id="looking_for-input" name="looking_for" class="form-control">
+      </div>
+      <div class="mb-3">
+        <label for="offering-input" class="form-label">Offering</label>
+        <input type="text" id="offering-input" name="offering" class="form-control">
+      </div>
+      <div class="mb-3">
+        <label for="telegram-input" class="form-label">Telegram</label>
+        <input type="text" id="telegram-input" name="telegram" class="form-control">
+      </div>
+      <button type="submit" class="btn btn-success me-2">Save</button>
+      <button type="button" id="cancel-btn" class="btn btn-secondary">Cancel</button>
+    </form>
   </div>
   <!-- Bootstrap JS bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Available roles for selection
+    const allRoles = ['Developer','Mentor','Investor','Designer','Analyst','Researcher','Advisor','Entrepreneur'];
+
     function getQueryParam(name) {
       const params = new URLSearchParams(window.location.search);
       return params.get(name);
     }
+
     async function loadProfile() {
-      let user = getQueryParam('user');
+      const user = getQueryParam('user');
       if (!user) {
         alert('No user specified');
         return;
       }
-      const url = `/profile/${encodeURIComponent(user)}`;
       try {
-        const res = await fetch(url);
+        const res = await fetch(`/profile/${encodeURIComponent(user)}`);
         if (!res.ok) throw new Error('Profile not found');
         const data = await res.json();
+        window.profileData = data;
+        // Populate display
         document.getElementById('avatar').src = data.avatarUrl;
         document.getElementById('name').textContent = data.name;
         const rolesDiv = document.getElementById('roles');
         rolesDiv.innerHTML = '';
         if (data.roles && data.roles.length) {
-          // Main role badge
           const mainBadge = document.createElement('span');
           mainBadge.className = 'badge bg-primary fs-5 me-2';
           mainBadge.textContent = data.roles[0];
           rolesDiv.appendChild(mainBadge);
-          // Other roles
           data.roles.slice(1).forEach(role => {
             const badge = document.createElement('span');
             badge.className = 'badge bg-secondary me-1';
@@ -66,17 +105,88 @@
             rolesDiv.appendChild(badge);
           });
         }
-        document.getElementById('bio').textContent = data.bio;
-        document.getElementById('looking-for-text').textContent = data.lookingFor;
+        document.getElementById('bio').textContent = data.bio_long;
+        document.getElementById('looking-for-text').textContent = data.looking_for;
         document.getElementById('offering-text').textContent = data.offering;
+        const telLink = document.getElementById('telegram-link');
+        telLink.href = `https://t.me/${data.telegram}`;
+        telLink.textContent = data.telegram;
+        const editBtn = document.getElementById('edit-btn');
+        if (user === 'me') editBtn.style.display = 'inline-block'; else editBtn.style.display = 'none';
       } catch (err) {
         console.error(err);
         document.getElementById('profile-container').innerHTML = '<p class="text-danger">Error loading profile.</p>';
       }
     }
-    document.getElementById('back-btn').addEventListener('click', () => {
-      window.location.href = '/contacts';
+
+    // Edit form handling
+    const editBtn = document.getElementById('edit-btn');
+    const editFormContainer = document.getElementById('edit-form-container');
+    const editForm = document.getElementById('edit-form');
+    const cancelBtn = document.getElementById('cancel-btn');
+
+    function openForm() {
+      document.getElementById('profile-container').style.display = 'none';
+      editFormContainer.style.display = 'block';
+      const data = window.profileData;
+      // Populate form
+      document.getElementById('bio_long-input').value = data.bio_long;
+      document.getElementById('looking_for-input').value = data.looking_for;
+      document.getElementById('offering-input').value = data.offering;
+      document.getElementById('telegram-input').value = data.telegram;
+      // Roles select
+      const rolesSelect = document.getElementById('roles-select');
+      rolesSelect.innerHTML = '';
+      allRoles.forEach(role => {
+        const opt = document.createElement('option');
+        opt.value = role;
+        opt.textContent = role;
+        if (data.roles.includes(role)) opt.selected = true;
+        rolesSelect.appendChild(opt);
+      });
+      // Main role select
+      const mainRoleSelect = document.getElementById('main-role-select');
+      mainRoleSelect.innerHTML = '';
+      data.roles.forEach(role => {
+        const opt = document.createElement('option');
+        opt.value = role;
+        opt.textContent = role;
+        if (role === data.roles[0]) opt.selected = true;
+        mainRoleSelect.appendChild(opt);
+      });
+    }
+
+    function closeForm() {
+      editFormContainer.style.display = 'none';
+      document.getElementById('profile-container').style.display = 'block';
+    }
+
+    editBtn.addEventListener('click', openForm);
+    cancelBtn.addEventListener('click', closeForm);
+
+    editForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const user = getQueryParam('user');
+      const formData = new FormData(editForm);
+      try {
+        const res = await fetch(`/profile/${encodeURIComponent(user)}`, {
+          method: 'POST',
+          body: formData
+        });
+        const json = await res.json();
+        if (json.status === 'ok') {
+          closeForm();
+          loadProfile();
+        } else {
+          alert('Error saving profile');
+        }
+      } catch (err) {
+        console.error('Save failed:', err);
+        alert('Save failed');
+      }
     });
+
+    document.getElementById('back-btn').addEventListener('click', () => { window.location.href = '/contacts'; });
     document.addEventListener('DOMContentLoaded', loadProfile);
   </script>
 </body>
