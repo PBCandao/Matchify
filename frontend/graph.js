@@ -12,6 +12,121 @@ function fetchAndDraw(u, d) {
     .then(data => drawGraph(data.nodes, data.links))
     .catch(err => console.error('Error loading graph data:', err));
 }
+// Global socket for real-time notifications
+const socket = io();
+socket.on('notification', n => {
+  // Update badge count
+  const countSpan = document.getElementById('notif-count');
+  let cnt = parseInt(countSpan.textContent) || 0;
+  countSpan.textContent = ++cnt;
+  // Prepend notification to list
+  const list = document.getElementById('notif-list');
+  const li = document.createElement('li');
+  li.textContent = n.message || n.type;
+  li.dataset.payload = JSON.stringify(n);
+  li.addEventListener('click', () => handleNotificationClick(n));
+  list.prepend(li);
+});
+function handleNotificationClick(n) {
+  // TODO: implement approve/decline logic
+  console.log('Notification clicked:', n);
+}
+// Function to show locked-node introduction preview
+function showLockedPreview(d) {
+  // Fetch shortest path to determine intermediary
+  fetch(`/path?from=me&to=${encodeURIComponent(d.id)}`)
+    .then(res => res.json())
+    .then(data => {
+      const path = data.path || [];
+      const viaId = path[1];
+      // Fetch via user profile to get name
+      fetch(`/profile/${encodeURIComponent(viaId)}`)
+        .then(r => r.json())
+        .then(viaProfile => {
+          const lp = document.getElementById('locked-preview');
+          if (!lp) return;
+          // Populate preview avatar and friend-of label
+          lp.querySelector('.preview-avatar').src = d.avatar_url || d.avatarUrl;
+          lp.querySelector('.preview-name').textContent = `Friend of ${viaProfile.name}`;
+          // Show all roles as badges
+          const rolesContainer = lp.querySelector('.preview-roles');
+          rolesContainer.innerHTML = '';
+          (d.roles || []).forEach((role, idx) => {
+            const badge = document.createElement('span');
+            badge.className = 'role-badge';
+            badge.title = role;
+            rolesContainer.appendChild(badge);
+          });
+          // Short bio, looking for, and offering
+          lp.querySelector('.preview-short-bio').textContent = d.bio_long || '';
+          lp.querySelector('.preview-looking').textContent = `Looking for: ${d.looking_for || ''}`;
+          lp.querySelector('.preview-offering').textContent = `Offering: ${d.offering || ''}`;
+          // Attach request connection handler
+          const reqBtn = lp.querySelector('#request-connection');
+          reqBtn.onclick = () => {
+            fetch('/request_connection', {
+              method: 'POST', headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({from:'me', to:d.id, via:viaId})
+            }).then(r=>r.json()).then(_=>{
+              alert('Connection request sent');
+              lp.classList.remove('show');
+              lp.classList.add('hidden');
+            });
+          };
+          // Attach show path handler
+          const spBtn = lp.querySelector('#show-path');
+          spBtn.onclick = () => {
+            // Animate path highlight
+            animatePath(path);
+            // Show intermediary avatars as clickable links
+            const container = lp.querySelector('#path-avatars');
+            container.innerHTML = '';
+            const allNodes = (window._graphData && window._graphData.nodes) || [];
+            path.slice(1, -1).forEach(uid => {
+              const nodeInfo = allNodes.find(n => n.id === uid) || {};
+              const img = document.createElement('img');
+              img.src = nodeInfo.avatar_url || nodeInfo.avatarUrl || '';
+              img.width = 40; img.height = 40;
+              img.classList.add('rounded-circle');
+              img.style.cursor = 'pointer';
+              // On click, focus this intermediary in the graph
+              img.addEventListener('click', () => {
+                // Close preview
+                lp.classList.remove('show');
+                lp.classList.add('hidden');
+                // Center graph on this user with full depth
+                fetchAndDraw(uid, 6);
+              });
+              container.appendChild(img);
+            });
+            const label = lp.querySelector('#path-label');
+            label.textContent = `${path.length - 1}-handshake`;
+          };
+          // Show the locked preview bottom sheet
+          lp.classList.remove('hidden');
+          lp.classList.add('show');
+        });
+    });
+}
+// Animate a glowing highlight along a path of node IDs
+function animatePath(path) {
+  // Highlight links in sequence
+  const svg = d3.select('#graph-container svg');
+  path.reduce((promise, curr, idx) => {
+    return promise.then(() => new Promise(res => {
+      if (idx < path.length-1) {
+        const s = path[idx], t = path[idx+1];
+        svg.selectAll('line')
+          .filter(d => (d.source.id||d.source)===s && (d.target.id||d.target)===t)
+          .transition().duration(300)
+          .attr('stroke', 'gold').attr('stroke-width', 4)
+          .transition().duration(300)
+          .attr('stroke', '#999').attr('stroke-width', 1)
+          .on('end', res);
+      } else res();
+    }));
+  }, Promise.resolve());
+}
 // Function to show profile popup or bottom sheet
 function showProfile(d) {
   const popup = document.getElementById('profile-popup');
@@ -89,14 +204,42 @@ window.addEventListener('load', () => {
       overlay.classList.add('hidden');
     });
   }
+  // Graph search filter
+  const searchInput = document.getElementById('graph-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => filterGraph(searchInput.value));
+  }
+  // Zoom controls
+  const zoomIn = document.getElementById('zoom-in');
+  const zoomOut = document.getElementById('zoom-out');
+  if (zoomIn) zoomIn.addEventListener('click', () => adjustZoom(1.2));
+  if (zoomOut) zoomOut.addEventListener('click', () => adjustZoom(0.8));
+  // Notification dropdown toggle
+  const notifBtn = document.getElementById('notif-btn');
+  const notifList = document.getElementById('notif-list');
+  if (notifBtn && notifList) {
+    notifBtn.addEventListener('click', () => notifList.classList.toggle('hidden'));
+  }
+  // Locked-preview close button
+  const closeLockedBtn = document.querySelector('#locked-preview .close-locked');
+  if (closeLockedBtn) {
+    closeLockedBtn.addEventListener('click', () => {
+      const lp = document.getElementById('locked-preview');
+      lp.classList.remove('show');
+      lp.classList.add('hidden');
+    });
+  }
   // Initialize with URL params or defaults, then fetch graph
   const params = new URLSearchParams(window.location.search);
   const user = params.get('user') || 'me';
-  const depth = parseInt(params.get('depth'), 10) || 1;
+  // Default to 6-degree separation on homepage
+  const depth = parseInt(params.get('depth'), 10) || 6;
   fetchAndDraw(user, depth);
 });
 
 function drawGraph(nodes, links) {
+  // Expose graph data globally for path preview
+  window._graphData = { nodes, links };
   let container = document.getElementById('graph-container');
   if (!container) {
     container = document.createElement('div');
@@ -120,31 +263,55 @@ function drawGraph(nodes, links) {
       .attr('width', width)
       .attr('height', height);
     const gMain = svg.append('g');
+    // Define avatar patterns
+    const defs = svg.append('defs');
+    nodes.forEach(d => {
+      defs.append('pattern')
+        .attr('id', `avatar-${d.id}`)
+        .attr('patternUnits', 'objectBoundingBox')
+        .attr('width', 1)
+        .attr('height', 1)
+        .append('image')
+          .attr('xlink:href', d.avatar_url || d.avatarUrl)
+          .attr('preserveAspectRatio', 'xMidYMid slice')
+          .attr('width', 40)
+          .attr('height', 40);
+    });
     // Draw links
     const link = gMain.append('g').selectAll('line')
       .data(links)
       .enter().append('line')
       .attr('stroke', '#999')
       .attr('stroke-width', 1);
-    // Draw nodes
-    const node = gMain.append('g').selectAll('circle')
+    // Draw nodes (avatar circles)
+    const nodeGroup = gMain.append('g').selectAll('g')
       .data(nodes)
-      .enter().append('circle')
-      .attr('r', 10)
-      .attr('fill', d => colorScale((d.roles && d.roles[0]) || d.id))
-      .on('click', (event, d) => showProfile(d));
-    // Double-click to recenter graph
-    node.on('dblclick', (event, d) => {
-      fetchAndDraw(d.id, currentDepth);
+      .enter().append('g')
+      .attr('class', d => d.depth > 1 ? 'locked' : '');
+    // Click handler: locked vs unlocked
+    nodeGroup.on('click', (event, d) => {
+      if (d.depth > 1) showLockedPreview(d);
+      else showProfile(d);
     });
-    // Draw labels
-    const label = gMain.append('g').selectAll('text')
-      .data(nodes)
-      .enter().append('text')
-      .text(d => d.name || d.id)
-      .attr('font-size', 10)
-      .attr('dx', 12)
-      .attr('dy', 4);
+    nodeGroup.append('circle')
+      .attr('r', 20)
+      .attr('fill', d => `url(#avatar-${d.id})`)
+      .on('dblclick', (event, d) => fetchAndDraw(d.id, currentDepth));
+    // Name and role labels (contacts only)
+    nodeGroup.append('text')
+      .attr('class', 'name-label')
+      .text(d => d.name)
+      .attr('text-anchor', 'middle')
+      .attr('dy', 30)
+      .attr('fill', '#000')
+      .attr('font-size', '12px');
+    nodeGroup.append('text')
+      .attr('class', 'role-label')
+      .text(d => (d.roles && d.roles[0]) || '')
+      .attr('text-anchor', 'middle')
+      .attr('dy', 45)
+      .attr('fill', '#666')
+      .attr('font-size', '10px');
     // Apply zoom and pan
     const zoomBehavior = d3.zoom()
       .scaleExtent([0.5, 5])
@@ -157,17 +324,15 @@ function drawGraph(nodes, links) {
       .force('charge', d3.forceManyBody().strength(-200))
       .force('center', d3.forceCenter(width / 2, height / 2));
     simulation.on('tick', () => {
+      // Update link positions
       link
         .attr('x1', d => d.source.x)
         .attr('y1', d => d.source.y)
         .attr('x2', d => d.target.x)
         .attr('y2', d => d.target.y);
-      node
-        .attr('cx', d => d.x)
-        .attr('cy', d => d.y);
-      label
-        .attr('x', d => d.x)
-        .attr('y', d => d.y);
+      // Update node group positions
+      nodeGroup
+        .attr('transform', d => `translate(${d.x},${d.y})`);
     });
   } else {
     const canvas = document.createElement('canvas');

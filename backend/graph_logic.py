@@ -1,6 +1,7 @@
 import networkx as nx
 from datetime import datetime
 import notifications
+import db
 
 G = nx.Graph()
 
@@ -78,12 +79,13 @@ def get_graph(user_id: str, depth: int):
     if user_id not in G:
         return [], []
 
-    # Find all nodes within the given depth
+    # Find all nodes within the given depth (depth=0 for user itself)
     lengths = nx.single_source_shortest_path_length(G, user_id, cutoff=depth)
     nodes = []
-    for node in lengths:
+    for node, dist in lengths.items():
         attrs = dict(G.nodes[node])
-        node_info = {'id': node}
+        # Include depth in node info
+        node_info = {'id': node, 'depth': dist}
         node_info.update(attrs)
         nodes.append(node_info)
 
@@ -96,3 +98,33 @@ def get_graph(user_id: str, depth: int):
         links.append(link_info)
 
     return nodes, links
+ 
+def load_data_from_db():
+    """
+    Load all users and relationships from the SQLite database into the in-memory graph.
+    """
+    # Clear existing in-memory graph
+    G.clear()
+    # Load users
+    for u in db.get_all_users():
+        uid = u.pop('id')
+        roles = u.pop('roles', [])
+        G.add_node(uid, **u, roles=roles)
+    # Load relationships
+    for r in db.get_all_relationships():
+        u1 = r['user1_id']
+        u2 = r['user2_id']
+        weight = r.get('weight', 1.0)
+        status = r.get('status', 'connected')
+        last = r.get('lastInteraction')
+        # Undirected graph will merge duplicates
+        G.add_edge(u1, u2, weight=weight, status=status, lastInteraction=last)
+    
+def get_path(u1, u2):
+    """
+    Return the shortest path (list of user IDs) between u1 and u2, or empty list if no path.
+    """
+    try:
+        return nx.shortest_path(G, u1, u2)
+    except Exception:
+        return []

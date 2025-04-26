@@ -6,6 +6,8 @@
   <title>Matchify Social Graph</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- Socket.IO client -->
+  <script src="/socket.io/socket.io.js"></script>
   <script src="graph.js" defer></script>
 </head>
 <body>
@@ -23,6 +25,17 @@
   <div id="sidebar-overlay" class="hidden"></div>
   <div id="main-content">
     <h1>Matchify Social Graph</h1>
+    <!-- Graph toolbar: search, zoom, notifications -->
+    <div id="graph-toolbar" class="toolbar">
+      <input type="text" id="graph-search" placeholder="Search..." />
+      <button id="zoom-in" title="Zoom In">+</button>
+      <button id="zoom-out" title="Zoom Out">−</button>
+      <span id="zoom-percent">100%</span>
+      <div id="notif-dropdown" class="notif-dropdown">
+        <button id="notif-btn" class="btn-notif" title="Notifications">514;<span id="notif-count">0</span></button>
+        <ul id="notif-list" class="notif-list hidden"></ul>
+      </div>
+    </div>
     <div id="graph-container"></div>
   </div>
   <div id="profile-popup" class="hidden">
@@ -39,4 +52,20 @@
     </div>
   </div>
 </body>
+  <!-- Locked-node introduction preview -->
+  <div id="locked-preview" class="hidden">
+    <div class="preview-content">
+      <button class="close-locked">&times;</button>
+      <img class="preview-avatar" src="" alt="Avatar" />
+      <div class="preview-name"></div>
+      <div class="preview-roles"></div>
+      <div class="preview-short-bio"></div>
+      <div class="preview-looking"></div>
+      <div class="preview-offering"></div>
+      <button id="request-connection" class="btn btn-primary">Request Connection</button>
+      <button id="show-path" class="btn btn-outline-primary">Show Path</button>
+      <div id="path-avatars" class="d-flex gap-2 mt-2"></div>
+      <div id="path-label" class="mt-1 text-center"></div>
+    </div>
+  </div>
 </html>

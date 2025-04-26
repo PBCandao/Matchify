@@ -11,11 +11,16 @@ import recommendations
 import notifications
 import os
 from werkzeug.utils import secure_filename
-from fake_data import generate_profiles
+from fake_data import seed_data
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 app.config['SECRET_KEY'] = 'super-secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
+# Initialize database and seed data
+import db
+seed_data()
+# Load in-memory graph from SQLite
+graph_logic.load_data_from_db()
 @app.route('/')
 def serve_index():
     return app.send_static_file('index.html')
@@ -33,6 +38,26 @@ def get_graph():
     depth = int(request.args.get('depth', 1))
     nodes, links = graph_logic.get_graph(user_id, depth)
     return jsonify({'nodes': nodes, 'links': links})
+ 
+@app.route('/path')
+def get_path():
+    # Return the shortest connection path between two users
+    from_id = request.args.get('from')
+    to_id = request.args.get('to')
+    if not from_id or not to_id:
+        return jsonify({'path': []}), 400
+    path = graph_logic.get_path(from_id, to_id)
+    return jsonify({'path': path})
+ 
+@app.route('/request_connection', methods=['POST'])
+def request_connection():
+    """
+    Alias for introductory connection requests.
+    """
+    data = request.get_json() or {}
+    # Expect fields: from, to, via
+    result = contacts.request_intro(data)
+    return jsonify(result)
 
 @app.route('/upload_contacts', methods=['POST'])
 def upload_contacts():
@@ -79,47 +104,56 @@ def add_relationship():
     return jsonify({'status': 'ok'})
 
 # WebSocket notifications are emitted via notifications module
-# Mock profile data generated dynamically
-PROFILES = generate_profiles()
+## Profile data is persisted in SQLite; no in-memory PROFILES
 
 @app.route('/profile/me')
 def get_my_profile():
-    return jsonify(PROFILES.get('me', {}))
+    # Return own profile with list of direct contacts
+    profile = db.get_user_profile('me')
+    if not profile:
+        return jsonify({'error': 'User not found'}), 404
+    # Include contacts list (IDs of direct relationships)
+    contacts = db.get_direct_contacts('me')
+    profile['contacts'] = [c['id'] for c in contacts]
+    return jsonify(profile)
 
 @app.route('/profile/<user_id>')
 def get_user_profile(user_id):
-    profile = PROFILES.get(user_id)
+    profile = db.get_user_profile(user_id)
     if not profile:
         return jsonify({'error': 'User not found'}), 404
     return jsonify(profile)
 
 @app.route('/api/contacts')
 def get_contacts():
-    me = PROFILES.get('me')
-    if not me:
-        return jsonify([]), 404
-    ids = me.get('contacts', [])
-    contacts_list = [PROFILES[uid] for uid in ids if uid in PROFILES]
+    # Direct contacts based on relationships
+    contacts_list = db.get_direct_contacts('me')
+    # For each contact, include their own contacts (for common friends calculation)
+    for c in contacts_list:
+        subs = db.get_direct_contacts(c['id'])
+        c['contacts'] = [s['id'] for s in subs]
     return jsonify(contacts_list)
 
 @app.route('/profile/<user_id>', methods=['POST'])
 def update_user_profile(user_id):
-    if user_id not in PROFILES:
+    # Update persisted user profile
+    existing = db.get_user_profile(user_id)
+    if not existing:
         return jsonify({'error': 'User not found'}), 404
-    profile = PROFILES[user_id]
-    # Update text fields
+    updates = {}
+    # Text fields
     for field in ['bio_long', 'looking_for', 'offering', 'telegram']:
         if field in request.form:
-            profile[field] = request.form.get(field)
+            updates[field] = request.form.get(field)
     # Roles and main role
     roles = request.form.getlist('roles')
     if roles:
-        profile['roles'] = roles
-    main_role = request.form.get('main_role')
-    if main_role and main_role in profile.get('roles', []):
-        r = profile['roles']
-        r.insert(0, r.pop(r.index(main_role)))
-        profile['roles'] = r
+        # Reorder main_role to front if provided
+        main_role = request.form.get('main_role')
+        if main_role and main_role in roles:
+            roles.insert(0, roles.pop(roles.index(main_role)))
+        updates['roles'] = roles
+        updates['main_role'] = roles[0]
     # Avatar upload
     avatar = request.files.get('avatar')
     if avatar and avatar.filename:
@@ -128,7 +162,13 @@ def update_user_profile(user_id):
         new_name = f"{user_id}{ext}"
         save_path = os.path.join(app.static_folder, 'assets', new_name)
         avatar.save(save_path)
-        profile['avatarUrl'] = f"/assets/{new_name}"
+        avatar_url = f"/assets/{new_name}"
+        updates['avatar_url'] = avatar_url
+    # Persist updates
+    if updates:
+        db.update_user_profile_db(user_id, **updates)
+    # Return updated profile
+    profile = db.get_user_profile(user_id)
     return jsonify({'status': 'ok', 'profile': profile})
 
 if __name__ == '__main__':

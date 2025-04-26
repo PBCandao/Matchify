@@ -96,4 +96,16 @@ def approve_intro(data):
         notifications.emit_notification(data.get('to'), event)
     except Exception:
         pass
+    # Upon approval, establish actual connection in DB and in-memory graph
+    try:
+        import db
+        import graph_logic
+        src = data.get('from')
+        tgt = data.get('to')
+        # Persist relationship
+        db.add_relationship_db(src, tgt, weight=1.0, status='connected')
+        # Update in-memory graph (this also emits graph_update)
+        graph_logic.add_relationship(src, tgt, weight=1.0, status='connected')
+    except Exception:
+        pass
     return result
