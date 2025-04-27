@@ -243,7 +243,7 @@ def update_user_profile_db(user_id, **fields):
     c.execute(query, vals)
     conn.commit()
     conn.close()
-::
+# removed stray Markdown placeholder
 def get_user_preferences(user_id):
     """
     Return preferences dict for a given user, defaulting to {}.
