@@ -4,41 +4,55 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Matchify Social Graph</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/lucide.min.js"></script>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <!-- Socket.IO client -->
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client/dist/socket.io.min.js"></script>
   <script src="/static/graph.js" defer></script>
 </head>
 <body>
   <button id="hamburger" class="hamburger-btn">&#9776;</button>
+  <img id="mobile-logo" src="/static/assets/logo.png" alt="Matchify Logo" />
   <div id="sidebar">
-    <h2>Menu</h2>
+    <img id="sidebar-logo" src="/static/assets/logo.png" alt="Matchify Logo" />
     <ul>
       <li><a href="/">Home</a></li>
       <li><a href="/contacts">Contacts</a></li>
       <li><a href="#">Notifications</a></li>
       <li><a href="#">Settings</a></li>
-      <li><a href="profile.html?user=me">Profile</a></li>
+      <li><a href="profile.html?id=me">Profile</a></li>
     </ul>
   </div>
   <div id="sidebar-overlay" class="hidden"></div>
   <div id="main-content">
-    <h1>Matchify Social Graph</h1>
+    <button id="back-btn" aria-label="Back">&larr;</button>
+    <div class="page-header">
+      <img src="/static/assets/logo.png" id="header-logo" alt="Matchify Logo" height="40" />
+      <h1>Matchify Social Graph</h1>
+    </div>
     <!-- Graph toolbar: search, zoom, notifications -->
     <div id="graph-toolbar" class="toolbar">
-      <input type="text" id="graph-search" placeholder="Search..." />
+      <div id="search-container">
+        <input id="search-input" type="text" placeholder="Search by name or role" aria-label="Filter graph by name or role" />
+        <div id="search-tags"></div>
+      </div>
       <button id="zoom-in" title="Zoom In">+</button>
       <button id="zoom-out" title="Zoom Out">−</button>
       <span id="zoom-percent">100%</span>
+      <button id="ai-toggle" class="btn-ai" title="AI Search"><i data-lucide="cpu"></i></button>
       <div id="notif-dropdown" class="notif-dropdown">
         <button id="notif-btn" class="btn-notif" title="Notifications">514;<span id="notif-count">0</span></button>
-        <ul id="notif-list" class="notif-list hidden">
-          <li class="see-all"><a href="/notifications">View All Notifications</a></li>
-        </ul>
+      <ul id="notif-list" class="notif-list hidden">
+        <li class="see-all"><a href="notifications.html">See full list</a></li>
+      </ul>
       </div>
     </div>
-    <div id="graph-container"></div>
+  <div id="graph-container"></div>
+  <div id="ai-feed" class="ai-feed hidden"></div>
   </div>
   <div id="profile-popup" class="hidden">
     <div class="popup-content">
@@ -53,6 +67,16 @@
       <a id="popup-full-profile" class="btn btn-primary">View Full Profile</a>
     </div>
   </div>
+  <!-- Initialize Lucide icons -->
+  <script>document.addEventListener('DOMContentLoaded', () => lucide.replace());</script>
+  <!-- Mobile Bottom Navigation -->
+  <nav id="mobile-nav">
+    <button onclick="location='/'"><i data-lucide="home"></i></button>
+    <button onclick="location='/contacts'"><i data-lucide="users"></i></button>
+    <button onclick="location='/map'"><i data-lucide="map-pin"></i></button>
+    <button onclick="location='/notifications'"><i data-lucide="bell"></i></button>
+    <button onclick="location='profile.html?id=me'"><i data-lucide="user"></i></button>
+  </nav>
 </body>
   <!-- Locked-node introduction preview -->
   <div id="locked-preview" class="hidden">

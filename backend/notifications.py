@@ -4,6 +4,7 @@ Notifications module: maintain ActivityLog and emit WebSocket notifications.
 """
 import uuid
 from datetime import datetime
+import db
 
 # WebSocket instance to be set by app
 socketio = None
@@ -32,6 +33,20 @@ def log_event(user_id, event_type, details=None):
         'timestamp': datetime.utcnow().isoformat()
     }
     activity_logs.append(event)
+    # Check user preferences before emitting
+    prefs = db.get_user_preferences(user_id)
+    # Map event types to preference keys
+    pref_map = {
+        'new_user': 'contact_join',
+        'new_relationship': 'new_connections',
+        'request_intro': 'introductions',
+        'approve_intro': 'system',
+        'role_discovery': 'role_discovery',
+        'area_unlock': 'area_unlock'
+    }
+    key = pref_map.get(event_type)
+    if key and not prefs.get(key, True):
+        return event
     # Emit via WebSocket
     if socketio:
         payload = {

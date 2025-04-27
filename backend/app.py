@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file, session, redirect
+import uuid
 from flask_socketio import SocketIO
 
 import models
@@ -10,17 +11,92 @@ import contacts
 import recommendations
 import notifications
 import os
+import io, json
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 from fake_data import seed_data
+import db
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='/static')
 app.config['SECRET_KEY'] = 'super-secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
-# Initialize database and seed data
-import db
+# Initialize database, migrate auth schema, and seed demo data
+db.init_db()
+db.migrate_auth_fields()
 seed_data()
-# Load in-memory graph from SQLite
+# Set default login credentials for demo user 'me'
+db.set_user_username('me', 'me')
+pwd_hash = generate_password_hash('password')
+db.set_user_password('me', pwd_hash)
+    # Load in-memory graph from SQLite
 graph_logic.load_data_from_db()
+
+"""
+Require login for protected routes, exempting login and register pages.
+"""
+@app.before_request
+def require_login():
+    # Endpoints that do not require login
+    exempt_endpoints = ('login', 'register', 'static')
+    if request.endpoint in exempt_endpoints:
+        return
+    if 'user_id' not in session:
+        return redirect('/login')
+
+# Login route for demo user
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        return app.send_static_file('login.html')
+    # POST: authenticate credentials
+    username = request.form.get('username')
+    password = request.form.get('password')
+    if not username or not password:
+        return redirect('/login')
+    user = db.get_user_by_username(username)
+    if not user or not check_password_hash(user.get('password_hash', ''), password):
+        return redirect('/login')
+    # Mark user as logged in
+    session['user_id'] = user['id']
+    return redirect('/')
+
+# Logout route
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+# Registration route for new users
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'GET':
+        return app.send_static_file('register.html')
+    # POST: create new user account
+    name = request.form.get('name') or ''
+    username = request.form.get('username')
+    password = request.form.get('password')
+    # Basic validation
+    if not username or not password:
+        return redirect('/register')
+    # Check if username already exists
+    existing = db.get_user_by_username(username)
+    if existing:
+        # Username taken, redirect (could flash a message)
+        return redirect('/register')
+    # Create new user
+    new_id = uuid.uuid4().hex
+    # Default values for new profile
+    avatar_url = ''
+    roles = []
+    main_role = ''
+    db.add_user_db(new_id, name, avatar_url, roles, main_role)
+    # Set auth fields
+    db.set_user_username(new_id, username)
+    pwd_hash = generate_password_hash(password)
+    db.set_user_password(new_id, pwd_hash)
+    # Log in new user
+    session['user_id'] = new_id
+    return redirect('/')
 @app.route('/')
 def serve_index():
     return app.send_static_file('index.html')
@@ -28,6 +104,17 @@ def serve_index():
 @app.route('/contacts')
 def serve_contacts():
     return app.send_static_file('contacts.html')
+@app.route('/map')
+def serve_map():
+    return app.send_static_file('map.html')
+@app.route('/settings.html')
+def serve_settings():
+    return app.send_static_file('settings.html')
+@app.route('/api/roles')
+def api_roles():
+    """Return distinct list of all roles from users."""
+    roles = db.get_all_roles()
+    return jsonify({'roles': roles})
 # Initialize notifications module with SocketIO instance
 notifications.init_app(socketio)
  
@@ -70,6 +157,45 @@ def request_intro():
     data = request.get_json() or {}
     result = contacts.request_intro(data)
     return jsonify(result)
+
+@app.route('/api/location', methods=['POST'])
+def api_location():
+    """Update user location and broadcast via WebSocket."""
+    data = request.get_json() or {}
+    lat = data.get('lat')
+    lng = data.get('lng')
+    if lat is None or lng is None:
+        return jsonify({'error': 'Missing lat/lng'}), 400
+    # Persist
+    db.update_user_location('me', lat, lng)
+    # Broadcast to all
+    socketio.emit('location_update', {'user_id': 'me', 'lat': lat, 'lng': lng}, broadcast=True)
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/map_nodes')
+def api_map_nodes():
+    """Return users nearby based on query params."""
+    try:
+        radius = float(request.args.get('radius', 5.0))
+    except ValueError:
+        radius = 5.0
+    roles_param = request.args.get('roles', '')
+    roles = [r for r in roles_param.split(',') if r]
+    online_only = request.args.get('onlineOnly') == 'true'
+    # For privacy, we exclude 'me' if offline/invisible
+    exclude = 'me'
+    # Get current user's location
+    # For simplicity, use location posted in user_locations
+    # Fetch from DB
+    loc = None
+    conn = db.get_connection(); c = conn.cursor();
+    row = c.execute('SELECT lat, lng FROM user_locations WHERE user_id = ?', ('me',)).fetchone(); conn.close()
+    if row:
+        center_lat, center_lng = row['lat'], row['lng']
+    else:
+        return jsonify({'users': []})
+    users = db.get_nearby_users(center_lat, center_lng, radius, roles or None, online_only, exclude_user=exclude)
+    return jsonify({'users': users})
 
 @app.route('/approve_intro', methods=['POST'])
 def approve_intro():
@@ -171,13 +297,169 @@ def update_user_profile(user_id):
     profile = db.get_user_profile(user_id)
     return jsonify({'status': 'ok', 'profile': profile})
     
-# Endpoint to retrieve notifications for current user ('me' by default)
+## Notifications Page and API
 @app.route('/notifications')
-def get_notifications():
-    """Return list of ActivityLog entries for the current user."""
-    # For now, assume user 'me'
+def serve_notifications_page():
+    # Serve static notifications center page
+    return app.send_static_file('notifications.html')
+
+@app.route('/api/notifications')
+def api_get_notifications():
+    """Return JSON list of ActivityLog entries for the current user ('me')."""
     logs = notifications.get_logs('me')
     return jsonify({'notifications': logs})
+
+@app.route('/api/notifications/mark_all_read', methods=['POST'])
+def api_mark_all_read():
+    for e in notifications.activity_logs:
+        if e.get('user_id') == 'me':
+            e['read'] = True
+    return '', 204
+
+@app.route('/api/notifications/<event_id>/read', methods=['POST'])
+def api_mark_read(event_id):
+    for e in notifications.activity_logs:
+        if e.get('event_id') == event_id and e.get('user_id') == 'me':
+            e['read'] = True
+    return '', 204
+
+@app.route('/api/notifications/<event_id>/approve', methods=['POST'])
+def api_approve_intro(event_id):
+    # Stub: mark an introduction request approved
+    return '', 204
+
+@app.route('/api/notifications/<event_id>/decline', methods=['POST'])
+def api_decline_intro(event_id):
+    # Stub: mark an introduction request declined
+    return '', 204
+  
+@app.route('/api/settings')
+def api_get_settings():
+    """Return current user's profile and preferences"""
+    profile = db.get_user_profile('me') or {}
+    prefs = db.get_user_preferences('me')
+    return jsonify({'profile': profile, 'preferences': prefs})
+
+@app.route('/api/settings', methods=['PUT'])
+def api_update_settings():
+    """Update current user's profile and preferences"""
+    data = request.get_json() or {}
+    # Profile fields
+    fields = ['name', 'bio_long', 'telegram', 'avatar_url', 'roles', 'main_role']
+    updates = {k: data[k] for k in fields if k in data}
+    if updates:
+        db.update_user_profile_db('me', **updates)
+    # Preferences
+    if 'preferences' in data and isinstance(data['preferences'], dict):
+        db.update_user_preferences_db('me', data['preferences'])
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/upload_avatar', methods=['POST'])
+def api_upload_avatar():
+    """Handle avatar file upload and return URL"""
+    file = request.files.get('avatar')
+    if not file or not file.filename:
+        return jsonify({'error': 'No file uploaded'}), 400
+    filename = secure_filename(file.filename)
+    ext = os.path.splitext(filename)[1]
+    new_name = f"me{ext}"
+    save_path = os.path.join(app.static_folder, 'assets', new_name)
+    file.save(save_path)
+    url = f"/static/assets/{new_name}"
+    # Persist avatar_url
+    db.update_user_profile_db('me', avatar_url=url)
+    return jsonify({'url': url})
+
+# Advanced Settings & Account Management APIs
+@app.route('/api/preferences', methods=['GET', 'POST'])
+def api_preferences():
+    # Preferences for current user ('me')
+    if request.method == 'GET':
+        prefs = db.get_user_preferences('me')
+        return jsonify(prefs)
+    data = request.get_json() or {}
+    # Merge and save preferences
+    current = db.get_user_preferences('me')
+    current.update(data)
+    db.update_user_preferences_db('me', current)
+    return '', 204
+
+@app.route('/api/export_data', methods=['GET'])
+def api_export_data():
+    # Export user's profile, contacts, and activity log as JSON
+    profile = db.get_user_profile('me') or {}
+    contacts = db.get_direct_contacts('me')
+    activity = notifications.get_logs('me')
+    export = {'profile': profile, 'contacts': contacts, 'activity': activity}
+    buf = io.BytesIO()
+    buf.write(json.dumps(export, indent=2).encode('utf-8'))
+    buf.seek(0)
+    return send_file(buf,
+                     download_name='me_matchify_export.json',
+                     as_attachment=True,
+                     mimetype='application/json')
+
+@app.route('/api/delete_account', methods=['POST'])
+def api_delete_account():
+    # Delete user and related data
+    # Remove from DB
+    conn = db.get_connection()
+    c = conn.cursor()
+    c.execute('DELETE FROM relationships WHERE user1_id = ? OR user2_id = ?', ('me','me'))
+    c.execute('DELETE FROM users WHERE id = ?', ('me',))
+    conn.commit()
+    conn.close()
+    # Remove from in-memory graph
+    try:
+        graph_logic.G.remove_node('me')
+    except Exception:
+        pass
+    # Remove activity logs
+    notifications.activity_logs[:] = [e for e in notifications.activity_logs if e.get('user_id') != 'me']
+    # Clear session if used
+    session.clear()
+    return jsonify({'deleted': True})
+
+@app.route('/api/meetups', methods=['POST'])
+def api_meetups():
+    """Create a new meetup and send invites."""
+    data = request.get_json() or {}
+    title = data.get('title')
+    time = data.get('time')
+    location = data.get('location', {})
+    invitees = data.get('invitees', [])
+    meetup_id = str(uuid.uuid4())
+    # Insert meetup
+    conn = db.get_connection(); c = conn.cursor()
+    c.execute('INSERT INTO meetups (id, host, title, lat, lng, time) VALUES (?,?,?,?,?,?)',
+              (meetup_id, 'me', title, location.get('lat'), location.get('lng'), time))
+    # Insert invites
+    for inv in invitees:
+        c.execute('INSERT OR REPLACE INTO meetup_invites (meetup_id, invitee, status) VALUES (?,?,?)',
+                  (meetup_id, inv, 'pending'))
+        # Notify invitee
+        payload = {
+            'meetup_id': meetup_id,
+            'from': 'me',
+            'title': title,
+            'location': location,
+            'time': time
+        }
+        socketio.emit('meetup_invite', payload, room=inv)
+    conn.commit(); conn.close()
+    return jsonify({'meetup_id': meetup_id})
+
+@app.route('/api/meetups/<meetup_id>/route', methods=['GET'])
+def api_meetup_route(meetup_id):
+    """Return route waypoints for a meetup."""
+    conn = db.get_connection(); c = conn.cursor()
+    row = c.execute('SELECT lat, lng FROM meetups WHERE id = ?', (meetup_id,)).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({'route': []}), 404
+    # Stub route: host location -> meetup location (same here)
+    route = [ {'lat': row['lat'], 'lng': row['lng']} ]
+    return jsonify({'route': route})
 
 if __name__ == '__main__':
 

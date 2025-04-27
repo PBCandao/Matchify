@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Matchify – Notifications</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client/dist/socket.io.min.js"></script>
+  <script src="/static/notifications.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <img id="logo" src="/static/assets/logo.png" alt="Matchify Logo" />
+    <h1>Your Notifications</h1>
+    <button id="mark-all-read">Mark All Read</button>
+  </header>
+
+  <nav class="notif-filters">
+    <button data-filter="all" class="active">All <span class="badge" id="badge-all"></span></button>
+    <button data-filter="connections">Connections <span class="badge" id="badge-connections"></span></button>
+    <button data-filter="intros">Intros <span class="badge" id="badge-intros"></span></button>
+    <button data-filter="roles">Roles <span class="badge" id="badge-roles"></span></button>
+    <button data-filter="system">System <span class="badge" id="badge-system"></span></button>
+  </nav>
+
+  <section id="notif-list">
+    <!-- Notifications will be rendered here -->
+  </section>
+
+  <footer class="app-footer">
+    <a href="/">&larr; Back to Home</a>
+  </footer>
+</body>
+</html>

@@ -1,3 +1,122 @@
+/* Global Brand Variables & Typography */
+:root {
+  --color-primary: #8B58FF;
+  --color-secondary: #F48037;
+  --color-tertiary: #F7F7F7;
+  --color-text: #333333;
+  --font-heading: 'Montserrat', sans-serif;
+  --font-body: 'Lato', sans-serif;
+  --shadow-soft: 0 2px 8px rgba(0,0,0,0.1);
+}
+/* Authentication Pages */
+.auth-container {
+  max-width: 400px;
+  margin: 5% auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+}
+.auth-container h1 {
+  font-family: var(--font-heading);
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.auth-container form {
+  display: flex;
+  flex-direction: column;
+}
+.auth-container label {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+.auth-container input {
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+.auth-container button {
+  align-self: center;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-heading);
+}
+.auth-container p {
+  text-align: center;
+}
+.auth-container a {
+  color: var(--color-primary);
+}
+/* Logo in auth pages */
+.auth-logo {
+  display: block;
+  margin: 0 auto 1rem;
+  width: 80px;
+  height: auto;
+}
+/* Page header with logo */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font-body);
+  background-color: var(--color-tertiary);
+  color: var(--color-text);
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--color-primary);
+  margin: 0;
+}
+/* Links & Buttons */
+a, .btn {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.btn {
+  display: inline-block;
+  background-color: var(--color-primary);
+  color: #fff;
+  padding: 0.5em 1em;
+  border: none;
+  border-radius: 0.5em;
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-family: var(--font-heading);
+}
+.btn:hover {
+  background-color: var(--color-secondary);
+}
+/* Notifications Page Styles */
+body { display: flex; flex-direction: column; height: 100vh; margin: 0; }
+.app-header { display: flex; align-items: center; padding: 0.5em 1em; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.app-header h1 { flex: 1; margin: 0; font-size: 1.25em; }
+#mark-all-read { background: none; border: none; color: #007bff; cursor: pointer; font-size: 0.9em; }
+.notif-filters { display: flex; background: #f8f9fa; padding: 0.5em; margin: 0; }
+.notif-filters button { flex: 1; border: none; background: none; padding: 0.75em; cursor: pointer; position: relative; }
+.notif-filters button.active { border-bottom: 2px solid #007bff; font-weight: bold; }
+.notif-filters .badge { background: #dc3545; color: #fff; border-radius: 10px; padding: 0 6px; font-size: 0.75rem; margin-left: 4px; display: inline-block; min-width: 18px; text-align: center; }
+#notif-list { flex: 1; overflow-y: auto; padding: 1em; background: #fff; margin: 0; }
+.notif-item { display: flex; align-items: center; padding: 0.75em; border-bottom: 1px solid #eee; cursor: pointer; }
+.notif-item.unread { background: #e9f7ff; }
+.notif-item .icon { font-size: 1.5em; margin-right: 0.75em; }
+.notif-item .content { flex: 1; }
+.notif-item button.action { margin-left: 0.5em; padding: 0.25em 0.5em; border: 1px solid #007bff; background: #007bff; color: #fff; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
+.notif-item button.action:hover { background: #0056b3; border-color: #0056b3; }
+.app-footer { padding: 0.5em 1em; text-align: center; background: #f8f9fa; }
+.app-footer a { color: #007bff; text-decoration: none; }
 .name-label { font-size: 12px; fill: #000; }
 .locked .name-label { display: none; }
 /* Sidebar link styles */
@@ -22,6 +141,14 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif
 /* Main content */
 #main-content { position: absolute; top: 0; left: 200px; right: 0; bottom: 0; padding: 20px; box-sizing: border-box; }
 #main-content h1 { margin: 0 0 10px; font-size: 24px; }
+#back-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  margin-right: 10px;
+  cursor: pointer;
+}
 
 /* Graph container */
 #graph-container { width: 100%; height: calc(100% - 40px); background: #f9f9f9; border: 1px solid #ddd; }
@@ -46,9 +173,51 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif
   color: #2c3e50;
   z-index: 1001;
 }
+#hamburger {
+  left: auto;
+  right: 10px;
+}
+
+#logo {
+  display: block;
+  height: 40px;
+  margin: 10px;
+}
 /* Sidebar overlay for mobile */
 #sidebar-overlay.hidden {
   display: none;
+}
+/* Advanced Settings & Account Styles */
+#advanced-settings {
+  margin-top: 2rem;
+}
+#advanced-settings .setting-group {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+#advanced-settings .setting-group label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+#advanced-settings .setting-group select,
+#advanced-settings .setting-group input[type="checkbox"] {
+  margin-bottom: 0.25rem;
+}
+#advanced-settings .setting-group button {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#advanced-settings .setting-group.danger button {
+  background: #e74c3c;
+}
+#advanced-settings .setting-group.danger small {
+  color: #e74c3c;
+  margin-top: 0.25rem;
 }
 #sidebar-overlay {
   display: none;
@@ -278,7 +447,95 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif
   font-size: 18px;
   margin: 8px 0;
 }
+/* Mobile Header & Bottom Nav */
+#mobile-logo { display: none; }
+@media (max-width: 768px) {
+  .hamburger-btn {
+    display: block;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2000;
+  }
+  #sidebar { display: none; }
+  #sidebar-overlay { display: none; }
+  #header-logo, #mobile-logo { display: block; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 2000; height: 32px; }
+  #main-content { margin-left: 0; padding-top: 56px; }
+  #mobile-nav { display: flex; }
+}
+/* Mobile Bottom Navigation Bar */
+#mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid #ccc;
+  justify-content: space-around;
+  padding: 6px 0;
+  z-index: 2000;
+}
+#mobile-nav button {
+  background: none;
+  border: none;
+  font-size: 1.4em;
+  color: var(--color-text);
+}
 #locked-preview .btn-primary,
 #locked-preview .btn-outline-primary {
   margin: 4px 8px;
+}
+/* Search input & tag pills */
+#search-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#search-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* AI Search Toggle Button */
+.btn-ai {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2em;
+  color: var(--color-secondary);
+  margin-left: 8px;
+}
+/* AI Feed Panel */
+#ai-feed {
+  position: absolute;
+  top: 56px;
+  right: 0;
+  width: 300px;
+  max-height: calc(100% - 56px);
+  background: #fff;
+  box-shadow: var(--shadow-soft);
+  overflow-y: auto;
+  z-index: 1500;
+  padding: 1rem;
+}
+.ai-feed.hidden { display: none; }
+.ai-result { border-bottom: 1px solid #eee; padding: 0.5rem 0; }
+.ai-result:last-child { border-bottom: none; }
+.ai-result h4 { margin: 0 0 0.25rem; font-size: 1rem; color: var(--color-primary); }
+.ai-result p { margin: 0 0 0.5rem; font-size: 0.875rem; }
+.ai-result button { font-size: 0.85rem; }
+.search-tag {
+  display: inline-flex;
+  align-items: center;
+  background: #007BFF;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+.search-tag .remove {
+  margin-left: 6px;
+  cursor: pointer;
+  font-weight: bold;
 }

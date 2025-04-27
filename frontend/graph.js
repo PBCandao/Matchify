@@ -1,9 +1,74 @@
 // Function to show profile popup or bottom sheet
 // Global state for graph navigation
 let currentDepth = 1;
+// Navigation history for graph back button
+let currentUser = null;
+let navStack = [];
+// Active search tags list
+let activeTags = [];
+// Original graph data stash for filtering
+let allData = { nodes: [], links: [] };
+// Zoom behavior instance for programmatic control
+let zoomBehavior;
+// Renders active search term tags and sets up removal handlers
+function renderTags() {
+  const tagsDiv = document.getElementById('search-tags');
+  if (!tagsDiv) return;
+  tagsDiv.innerHTML = '';
+  activeTags.forEach(tag => {
+    const pill = document.createElement('span');
+    pill.className = 'search-tag';
+    pill.textContent = tag;
+    const x = document.createElement('span');
+    x.className = 'remove';
+    x.textContent = '×';
+    x.onclick = () => {
+      activeTags = activeTags.filter(t => t !== tag);
+      renderTags();
+      filterAndDraw(allData.nodes, allData.links, activeTags);
+    };
+    pill.appendChild(x);
+    tagsDiv.appendChild(pill);
+  });
+}
+// Filters nodes and links based on activeTags and redraws graph
+function filterAndDraw(nodes, links, tags) {
+  let filteredNodes = nodes;
+  tags.forEach(term => {
+    filteredNodes = filteredNodes.filter(n =>
+      n.name.toLowerCase().includes(term) ||
+      n.main_role.toLowerCase().includes(term)
+    );
+  });
+  const filteredLinks = links.filter(l =>
+    filteredNodes.some(n => n.id === l.source) &&
+    filteredNodes.some(n => n.id === l.target)
+  );
+  drawGraph(filteredNodes, filteredLinks);
+}
+
+// Function to adjust zoom programmatically
+function adjustZoom(factor) {
+  const svg = d3.select('#graph-container svg');
+  if (svg.empty() || !zoomBehavior) return;
+  svg.transition().duration(300).call(zoomBehavior.scaleBy, factor);
+  const transform = d3.zoomTransform(svg.node());
+  const zp = document.getElementById('zoom-percent');
+  if (zp) zp.textContent = Math.round(transform.k * 100) + '%';
+}
 // Fetch and draw graph for given user and depth
-function fetchAndDraw(u, d) {
+function fetchAndDraw(u, d, pushToHistory = true) {
+  // Manage navigation history
+  if (pushToHistory && currentUser !== null) {
+    navStack.push({ user: currentUser, depth: currentDepth });
+  }
+  currentUser = u;
   currentDepth = d;
+  // Toggle back button visibility
+  const backBtn = document.getElementById('back-btn');
+  if (backBtn) {
+    backBtn.style.display = navStack.length > 0 ? 'inline-block' : 'none';
+  }
   fetch(`/graph?user=${encodeURIComponent(u)}&depth=${encodeURIComponent(d)}`)
     .then(res => {
       if (!res.ok) throw new Error(res.statusText);
@@ -11,7 +76,8 @@ function fetchAndDraw(u, d) {
     })
     .then(data => {
       console.log('Graph data:', data);
-      drawGraph(data.nodes, data.links);
+      allData = data;
+      filterAndDraw(data.nodes, data.links, activeTags);
     })
     .catch(err => console.error('Error loading graph data:', err));
 }
@@ -68,10 +134,14 @@ function showLockedPreview(d) {
           // Attach request connection handler
           const reqBtn = lp.querySelector('#request-connection');
           reqBtn.onclick = () => {
+            // Confirm before sending introduction request
+            if (!confirm(`Send introduction request to ${viaProfile.name}?`)) {
+              return;
+            }
             fetch('/request_connection', {
               method: 'POST', headers: {'Content-Type':'application/json'},
               body: JSON.stringify({from:'me', to:d.id, via:viaId})
-            }).then(r=>r.json()).then(_=>{
+            }).then(r => r.json()).then(_ => {
               alert('Connection request sent');
               lp.classList.remove('show');
               lp.classList.add('hidden');
@@ -158,7 +228,7 @@ function showProfile(d) {
       telLink.href = `https://t.me/${data.telegram}`;
       telLink.textContent = data.telegram;
       const fullBtn = document.getElementById('popup-full-profile');
-      fullBtn.href = `profile.html?user=${encodeURIComponent(d.id)}`;
+      fullBtn.href = `profile.html?id=${encodeURIComponent(d.id)}`;
     })
     .catch(err => console.error('Error loading profile:', err));
   // Show popup
@@ -214,10 +284,40 @@ window.addEventListener('load', () => {
       overlay.classList.add('hidden');
     });
   }
-  // Graph search filter
-  const searchInput = document.getElementById('graph-search');
-  if (searchInput) {
-    searchInput.addEventListener('input', () => filterGraph(searchInput.value));
+  // Enhanced search: live preview and persistent tags
+  const input = document.getElementById('search-input');
+  const tagsDiv = document.getElementById('search-tags');
+  if (input && tagsDiv) {
+    // Live preview on keystroke
+    input.addEventListener('input', () => {
+      const term = input.value.trim().toLowerCase();
+      if (!term) {
+        filterAndDraw(allData.nodes, allData.links, activeTags);
+        return;
+      }
+      const previewNodes = allData.nodes.filter(n =>
+        n.name.toLowerCase().includes(term) ||
+        n.main_role.toLowerCase().includes(term)
+      );
+      const previewLinks = allData.links.filter(l =>
+        previewNodes.some(n => n.id === l.source) &&
+        previewNodes.some(n => n.id === l.target)
+      );
+      drawGraph(previewNodes, previewLinks);
+    });
+    // Commit tag on Enter
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const term = input.value.trim().toLowerCase();
+        if (term && !activeTags.includes(term)) {
+          activeTags.push(term);
+          renderTags();
+        }
+        input.value = '';
+        filterAndDraw(allData.nodes, allData.links, activeTags);
+      }
+    });
   }
   // Zoom controls
   const zoomIn = document.getElementById('zoom-in');
@@ -276,6 +376,18 @@ window.addEventListener('load', () => {
   const user = params.get('user') || 'me';
   // Default to 6-degree separation on homepage
   const depth = parseInt(params.get('depth'), 10) || 6;
+  // Set up back button behavior
+  const backBtn = document.getElementById('back-btn');
+  if (backBtn) {
+    backBtn.style.display = 'none';
+    backBtn.addEventListener('click', () => {
+      if (navStack.length > 0) {
+        const prev = navStack.pop();
+        fetchAndDraw(prev.user, prev.depth, false);
+      }
+    });
+  }
+  // Initial graph load
   fetchAndDraw(user, depth);
 });
 
@@ -353,12 +465,15 @@ function drawGraph(nodes, links) {
       .attr('text-anchor', 'middle')
       .attr('dy', 45)
       .attr('fill', '#666')
-      .attr('font-size', '10px');
+      .attr('font-size', '10px')
+      .style('font-weight', 'bold');
     // Apply zoom and pan
-    const zoomBehavior = d3.zoom()
+    zoomBehavior = d3.zoom()
       .scaleExtent([0.5, 5])
       .on('zoom', (event) => {
         gMain.attr('transform', event.transform);
+        const zp = document.getElementById('zoom-percent');
+        if (zp) zp.textContent = Math.round(event.transform.k * 100) + '%';
       });
     svg.call(zoomBehavior);
     const simulation = d3.forceSimulation(nodes)
