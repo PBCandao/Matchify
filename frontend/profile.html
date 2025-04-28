@@ -80,13 +80,13 @@
     }
 
     async function loadProfile() {
-      const user = getQueryParam('user');
-      if (!user) {
+    const userId = getQueryParam('id');
+      if (!userId) {
         alert('No user specified');
         return;
       }
       try {
-        const res = await fetch(`/profile/${encodeURIComponent(user)}`);
+        const res = await fetch(`/profile/${encodeURIComponent(userId)}`);
         if (!res.ok) throw new Error('Profile not found');
         const data = await res.json();
         window.profileData = data;
@@ -114,7 +114,7 @@
         telLink.href = `https://t.me/${data.telegram}`;
         telLink.textContent = data.telegram;
         const editBtn = document.getElementById('edit-btn');
-        if (user === 'me') editBtn.style.display = 'inline-block'; else editBtn.style.display = 'none';
+        if (userId === 'me') editBtn.style.display = 'inline-block'; else editBtn.style.display = 'none';
         // Debug: show raw profile data
         const debugPre = document.getElementById('debug');
         if (debugPre) debugPre.textContent = JSON.stringify(data, null, 2);
@@ -171,10 +171,10 @@
 
     editForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const user = getQueryParam('user');
+      const userId = getQueryParam('id');
       const formData = new FormData(editForm);
       try {
-        const res = await fetch(`/profile/${encodeURIComponent(user)}`, {
+        const res = await fetch(`/profile/${encodeURIComponent(userId)}`, {
           method: 'POST',
           body: formData
         });

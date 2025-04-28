@@ -9,8 +9,9 @@ import db
 # WebSocket instance to be set by app
 socketio = None
 
-# In-memory activity log store: list of dicts
-activity_logs = []
+"""
+Notifications stored in SQLite; in-memory list deprecated.
+"""
 
 def init_app(sio):
     """
@@ -25,14 +26,8 @@ def log_event(user_id, event_type, details=None):
     details: arbitrary dict of event details.
     Returns the event dict.
     """
-    event = {
-        'event_id': str(uuid.uuid4()),
-        'user_id': user_id,
-        'type': event_type,
-        'details': details or {},
-        'timestamp': datetime.utcnow().isoformat()
-    }
-    activity_logs.append(event)
+    # Persist notification in database
+    event = db.create_notification(user_id, event_type, details)
     # Check user preferences before emitting
     prefs = db.get_user_preferences(user_id)
     # Map event types to preference keys
@@ -72,9 +67,9 @@ def emit_notification(user_id, event):
 
 def get_logs(user_id):
     """
-    Retrieve all ActivityLog entries for a given user_id.
+    Retrieve all notifications for a given user_id from database.
     """
-    return [e for e in activity_logs if e.get('user_id') == user_id]
+    return db.get_user_notifications(user_id)
 
 def broadcast_graph_update(update_type, data):
     """

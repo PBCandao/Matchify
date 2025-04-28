@@ -1,7 +1,7 @@
 import sqlite3
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Path to the SQLite database file
 DB_PATH = os.path.join(os.path.dirname(__file__), 'data.db')
@@ -77,6 +77,18 @@ def init_db():
         )
     ''')
     conn.commit()
+    # Notifications table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            type TEXT,
+            details TEXT,
+            timestamp TEXT,
+            read INTEGER DEFAULT 0
+        )
+    ''')
+    conn.commit()
     conn.close()
 
 def add_user_db(user_id, name, avatar_url, roles, main_role,
@@ -147,6 +159,64 @@ def get_all_users():
             u['preferences'] = {}
         users.append(u)
     return users
+  
+# Notification helpers using database instead of in-memory logs
+def create_notification(user_id, event_type, details=None):
+    """Insert a new notification into the database and return its record."""
+    import uuid
+    conn = get_connection()
+    c = conn.cursor()
+    ts = datetime.utcnow().isoformat()
+    det = json.dumps(details or {})
+    nid = uuid.uuid4().hex
+    c.execute(
+        'INSERT INTO notifications (id, user_id, type, details, timestamp, read) VALUES (?, ?, ?, ?, ?, 0)',
+        (nid, user_id, event_type, det, ts)
+    )
+    conn.commit()
+    conn.close()
+    return {'event_id': nid, 'user_id': user_id, 'type': event_type, 'details': details or {}, 'timestamp': ts, 'read': False}
+
+def get_user_notifications(user_id):
+    """Fetch all notifications for a user."""
+    conn = get_connection()
+    c = conn.cursor()
+    rows = c.execute(
+        'SELECT * FROM notifications WHERE user_id = ? ORDER BY timestamp DESC',
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    out = []
+    for row in rows:
+        try:
+            det = json.loads(row['details'] or '{}')
+        except Exception:
+            det = {}
+        out.append({
+            'event_id': row['id'],
+            'user_id': row['user_id'],
+            'type': row['type'],
+            'details': det,
+            'timestamp': row['timestamp'],
+            'read': bool(row['read'])
+        })
+    return out
+
+def mark_notification_read(event_id):
+    """Mark a single notification as read."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('UPDATE notifications SET read = 1 WHERE id = ?', (event_id,))
+    conn.commit()
+    conn.close()
+
+def mark_all_notifications_read(user_id):
+    """Mark all notifications for a user as read."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('UPDATE notifications SET read = 1 WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
 
 def get_all_relationships():
     """
@@ -349,7 +419,7 @@ def get_nearby_users(center_lat, center_lng, radius_km, roles=None, online_only=
     c = conn.cursor()
     # Join users and user_locations
     query = '''
-    SELECT u.id, u.name, u.avatar_url, u.roles, ul.lat, ul.lng
+    SELECT u.id, u.name, u.avatar_url, u.roles, ul.lat, ul.lng, ul.updated_at
     FROM user_locations ul
     JOIN users u ON u.id = ul.user_id
     WHERE (? * acos(
@@ -370,16 +440,24 @@ def get_nearby_users(center_lat, center_lng, radius_km, roles=None, online_only=
     rows = c.execute(query, params).fetchall()
     conn.close()
     users = []
+    now = datetime.utcnow()
+    threshold = now - timedelta(minutes=5)
     for row in rows:
+        # Filter offline if requested
+        if online_only:
+            try:
+                last = datetime.fromisoformat(row['updated_at'])
+            except Exception:
+                continue
+            if last < threshold:
+                continue
         u = dict(row)
         try:
-            u['roles'] = json.loads(u['roles'] or '[]')
+            u['roles'] = json.loads(u.get('roles') or '[]')
         except Exception:
             u['roles'] = []
         u['lat'] = row['lat']
         u['lng'] = row['lng']
-        # Default status
         u['status'] = 'online'
         users.append(u)
-    # Note: online_only not yet implemented
     return users

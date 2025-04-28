@@ -44,6 +44,7 @@
       <button id="zoom-out" title="Zoom Out">−</button>
       <span id="zoom-percent">100%</span>
       <button id="ai-toggle" class="btn-ai" title="AI Search"><i data-lucide="cpu"></i></button>
+      <input id="ai-search" type="text" class="ai-search-input" placeholder="Ask AI…" />
       <div id="notif-dropdown" class="notif-dropdown">
         <button id="notif-btn" class="btn-notif" title="Notifications">514;<span id="notif-count">0</span></button>
       <ul id="notif-list" class="notif-list hidden">
@@ -77,7 +78,7 @@
     <button onclick="location='/notifications'"><i data-lucide="bell"></i></button>
     <button onclick="location='profile.html?id=me'"><i data-lucide="user"></i></button>
   </nav>
-  <script src="/static/js/aiSearch.js"></script>
+  <script src="/static/js/aiSearch.js" defer></script>
 </body>
   <!-- Locked-node introduction preview -->
   <div id="locked-preview" class="hidden">

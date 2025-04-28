@@ -1,10 +1,14 @@
 // frontend/js/map.js
 document.addEventListener('DOMContentLoaded', () => {
-  // Initialize map
+  // Initialize map with style toggle base layers
   const map = L.map('map');
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+  });
+  const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenTopoMap contributors'
+  });
+  let currentBase = streetLayer.addTo(map);
   // Marker cluster group
   const markers = L.markerClusterGroup();
   map.addLayer(markers);
@@ -22,7 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Routing control placeholder
   let routeControl = null;
   // Filters state
-  let filters = { roles: [], radius: 5, onlineOnly: false, invisible: false };
+  let filters = { roles: [], radius: 5, onlineOnly: false, invisible: false, searchTerm: '' };
+  // Map search input filtering
+  const mapSearch = document.getElementById('map-search');
+  mapSearch.addEventListener('input', () => {
+    filters.searchTerm = mapSearch.value.trim().toLowerCase();
+    loadNodes();
+  });
   let lastKnownLocation = null;
   // Listen for filter changes
   window.addEventListener('filtersChanged', e => {
@@ -52,6 +62,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   // Header buttons
   document.getElementById('settings-btn').addEventListener('click', () => window.location = '/settings.html');
+  // Filter drawer toggle
+  const filterDrawer = document.getElementById('filter-drawer');
+  document.getElementById('filter-toggle').addEventListener('click', () => filterDrawer.classList.toggle('open'));
+  // Map style toggle
+  document.getElementById('map-style-toggle').addEventListener('click', () => {
+    map.removeLayer(currentBase);
+    currentBase = (currentBase === streetLayer ? topoLayer : streetLayer);
+    map.addLayer(currentBase);
+  });
   // Load nodes from API
   function loadNodes() {
     if (!lastKnownLocation) return;
@@ -65,6 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
         markers.clearLayers();
         const heatData = [];
         (json.users || []).forEach(u => {
+          // Client-side search filtering
+          if (filters.searchTerm) {
+            const matchName = u.name.toLowerCase().includes(filters.searchTerm);
+            const matchRole = (u.roles || []).some(r => r.toLowerCase().includes(filters.searchTerm));
+            if (!matchName && !matchRole) return;
+          }
           const html = `<div class="map-avatar"><img src="${u.avatar_url}"/></div>`;
           const icon = L.divIcon({ html, className: '', iconSize: [48,48], iconAnchor: [24,24] });
           const m = L.marker([u.lat, u.lng], { icon });

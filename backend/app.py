@@ -21,14 +21,16 @@ app = Flask(__name__, static_folder='../frontend', static_url_path='/static')
 app.config['SECRET_KEY'] = 'super-secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
 # Initialize database, migrate auth schema, and seed demo data
+DEMO_MODE = os.environ.get('DEMO_MODE') == 'true'
 db.init_db()
 db.migrate_auth_fields()
-seed_data()
-# Set default login credentials for demo user 'me'
-db.set_user_username('me', 'me')
-pwd_hash = generate_password_hash('password')
-db.set_user_password('me', pwd_hash)
-    # Load in-memory graph from SQLite
+if DEMO_MODE:
+    # Seed demo data and default user
+    seed_data()
+    db.set_user_username('me', 'me')
+    pwd_hash = generate_password_hash('password')
+    db.set_user_password('me', pwd_hash)
+# Load in-memory graph from SQLite
 graph_logic.load_data_from_db()
 
 """
@@ -196,6 +198,14 @@ def api_map_nodes():
         return jsonify({'users': []})
     users = db.get_nearby_users(center_lat, center_lng, radius, roles or None, online_only, exclude_user=exclude)
     return jsonify({'users': users})
+@app.route('/api/ai_search', methods=['POST'])
+def api_ai_search():
+    """Stub AI search endpoint."""
+    data = request.get_json() or {}
+    query = data.get('query', '')
+    # TODO: integrate AI service
+    results = []
+    return jsonify({'results': results})
 
 @app.route('/approve_intro', methods=['POST'])
 def approve_intro():
@@ -311,16 +321,15 @@ def api_get_notifications():
 
 @app.route('/api/notifications/mark_all_read', methods=['POST'])
 def api_mark_all_read():
-    for e in notifications.activity_logs:
-        if e.get('user_id') == 'me':
-            e['read'] = True
+    # Mark all notifications read in database
+    user = session.get('user_id')
+    db.mark_all_notifications_read(user)
     return '', 204
 
 @app.route('/api/notifications/<event_id>/read', methods=['POST'])
 def api_mark_read(event_id):
-    for e in notifications.activity_logs:
-        if e.get('event_id') == event_id and e.get('user_id') == 'me':
-            e['read'] = True
+    # Mark individual notification read in database
+    db.mark_notification_read(event_id)
     return '', 204
 
 @app.route('/api/notifications/<event_id>/approve', methods=['POST'])
