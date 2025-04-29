@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request, jsonify, send_file, session, redirect
+import os
+from flask import Flask, request, jsonify, send_from_directory, session, redirect, url_for
 import uuid
 from flask_socketio import SocketIO
 
@@ -17,7 +18,19 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from fake_data import seed_data
 import db
 
-app = Flask(__name__, static_folder='../frontend', static_url_path='/static')
+# you need a secret key for sessions to work
+app = Flask(__name__, static_folder='frontend', static_url_path='')
+app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
+
+# Catch-all route for serving the SPA
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def catch_all(path):
+    full_path = os.path.join(app.static_folder, path)
+    if path and os.path.exists(full_path):
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, 'index.html')
+
 app.config['SECRET_KEY'] = 'super-secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
 # Initialize database, migrate auth schema, and seed demo data
@@ -46,10 +59,8 @@ def require_login():
         return redirect('/login')
 
 # Login route for demo user
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['POST'])
 def login():
-    if request.method == 'GET':
-        return app.send_static_file('login.html')
     # POST: authenticate credentials
     username = request.form.get('username')
     password = request.form.get('password')
@@ -69,10 +80,8 @@ def logout():
     return redirect('/login')
 
 # Registration route for new users
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/register', methods=['POST'])
 def register():
-    if request.method == 'GET':
-        return app.send_static_file('register.html')
     # POST: create new user account
     name = request.form.get('name') or ''
     username = request.form.get('username')
@@ -99,19 +108,6 @@ def register():
     # Log in new user
     session['user_id'] = new_id
     return redirect('/')
-@app.route('/')
-def serve_index():
-    return app.send_static_file('index.html')
-
-@app.route('/contacts')
-def serve_contacts():
-    return app.send_static_file('contacts.html')
-@app.route('/map')
-def serve_map():
-    return app.send_static_file('map.html')
-@app.route('/settings.html')
-def serve_settings():
-    return app.send_static_file('settings.html')
 @app.route('/api/roles')
 def api_roles():
     """Return distinct list of all roles from users."""
