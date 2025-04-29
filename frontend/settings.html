@@ -17,6 +17,50 @@
   <script>document.addEventListener('DOMContentLoaded', () => lucide.replace());</script>
 </head>
 <body class="bg-light">
+  <nav id="top-nav">
+    <div class="nav-left">
+      <img id="nav-logo" src="/static/assets/logo.png" alt="Matchify Logo" />
+    </div>
+    <div class="nav-center"></div>
+    <div class="nav-right">
+      <button id="nav-notif" aria-label="Notifications">
+        <i data-lucide="bell"></i>
+      </button>
+      <img id="nav-avatar" src="/static/assets/me.jpeg" alt="Avatar" />
+    </div>
+    <div id="avatar-dropdown" class="dropdown hidden">
+      <div class="dd-header">
+        <img src="/static/assets/me.jpeg" /><span class="dd-name">Your Name</span>
+      </div>
+      <ul>
+        <li data-action="profile">My Profile</li>
+        <li data-action="settings">Settings & Privacy</li>
+        <li data-action="logout">Logout</li>
+      </ul>
+    </div>
+    <div id="avatar-sidebar" class="sidebar hidden">
+      <div class="sb-header">
+        <img src="/static/assets/me.jpeg" /><span>Your Name</span>
+      </div>
+      <ul>
+        <li data-action="profile">My Profile</li>
+        <li data-action="contacts">Contacts</li>
+        <li data-action="settings">Settings & Privacy</li>
+        <li data-action="faq">FAQ</li>
+        <li data-action="tokens">Get Tokens</li>
+        <li data-action="preorder">Preorder Matchify</li>
+        <li data-action="logout">Logout</li>
+      </ul>
+    </div>
+    <div id="notif-panel" class="dropdown hidden">
+      <ul class="notif-list">
+        <li>You have 1 new connection</li>
+        <li>Your profile was viewed</li>
+        <li>John requested an intro</li>
+      </ul>
+      <button id="see-more">See More</button>
+    </div>
+  </nav>
   <header class="d-flex align-items-center bg-white p-3 shadow-sm">
     <button id="back-btn" class="btn btn-link me-3"><i data-lucide="arrow-left"></i></button>
     <h1 class="h5 mb-0">Settings</h1>
@@ -153,5 +197,6 @@
     </section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script src="/static/js/navbar.js" defer></script>
 </body>
 </html>

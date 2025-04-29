@@ -24,6 +24,50 @@
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/lucide.min.js"></script>
 </head>
 <body>
+  <nav id="top-nav">
+    <div class="nav-left">
+      <img id="nav-logo" src="/static/assets/logo.png" alt="Matchify Logo" />
+    </div>
+    <div class="nav-center"></div>
+    <div class="nav-right">
+      <button id="nav-notif" aria-label="Notifications">
+        <i data-lucide="bell"></i>
+      </button>
+      <img id="nav-avatar" src="/static/assets/me.jpeg" alt="Avatar" />
+    </div>
+    <div id="avatar-dropdown" class="dropdown hidden">
+      <div class="dd-header">
+        <img src="/static/assets/me.jpeg" /><span class="dd-name">Your Name</span>
+      </div>
+      <ul>
+        <li data-action="profile">My Profile</li>
+        <li data-action="settings">Settings & Privacy</li>
+        <li data-action="logout">Logout</li>
+      </ul>
+    </div>
+    <div id="avatar-sidebar" class="sidebar hidden">
+      <div class="sb-header">
+        <img src="/static/assets/me.jpeg" /><span>Your Name</span>
+      </div>
+      <ul>
+        <li data-action="profile">My Profile</li>
+        <li data-action="contacts">Contacts</li>
+        <li data-action="settings">Settings & Privacy</li>
+        <li data-action="faq">FAQ</li>
+        <li data-action="tokens">Get Tokens</li>
+        <li data-action="preorder">Preorder Matchify</li>
+        <li data-action="logout">Logout</li>
+      </ul>
+    </div>
+    <div id="notif-panel" class="dropdown hidden">
+      <ul class="notif-list">
+        <li>You have 1 new connection</li>
+        <li>Your profile was viewed</li>
+        <li>John requested an intro</li>
+      </ul>
+      <button id="see-more">See More</button>
+    </div>
+  </nav>
   <!-- Header -->
   <header class="map-header d-flex align-items-center justify-content-between p-2 shadow-sm bg-white">
     <img src="/static/assets/logo.png" alt="Matchify" height="40" />
@@ -63,5 +107,6 @@
   <script src="/static/js/map.js" defer></script>
   <script src="/static/js/bottomSheet.js" defer></script>
   <script src="/static/js/meetup.js" defer></script>
+  <script src="/static/js/navbar.js" defer></script>
 </body>
 </html>
