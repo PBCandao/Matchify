@@ -19,17 +19,26 @@ from fake_data import seed_data
 import db
 
 # you need a secret key for sessions to work
-app = Flask(__name__, static_folder='frontend', static_url_path='')
+# Initialize Flask without built-in static handler and configure secret key
+app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 
-# Catch-all route for serving the SPA
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    """Serve frontend assets from the frontend/assets directory."""
+    assets_dir = os.path.join(app.root_path, 'frontend/assets')
+    return send_from_directory(assets_dir, filename)
+
+# Catch-all route for serving the frontend SPA
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
-    full_path = os.path.join(app.static_folder, path)
-    if path and os.path.exists(full_path):
-        return send_from_directory(app.static_folder, path)
-    return send_from_directory(app.static_folder, 'index.html')
+    # Determine the full file path within the frontend directory
+    full = os.path.join(app.root_path, 'frontend', path)
+    # If the requested file exists, serve it; otherwise, serve index.html
+    if path and os.path.isfile(full):
+        return send_from_directory(os.path.join(app.root_path, 'frontend'), path)
+    return send_from_directory(os.path.join(app.root_path, 'frontend'), 'index.html')
 
 app.config['SECRET_KEY'] = 'super-secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -292,7 +301,9 @@ def update_user_profile(user_id):
         filename = secure_filename(avatar.filename)
         ext = os.path.splitext(filename)[1]
         new_name = f"{user_id}{ext}"
-        save_path = os.path.join(app.static_folder, 'assets', new_name)
+        # Save avatar into frontend assets directory
+        assets_dir = os.path.join(app.root_path, 'frontend', 'assets')
+        save_path = os.path.join(assets_dir, new_name)
         avatar.save(save_path)
         avatar_url = f"/assets/{new_name}"
         updates['avatar_url'] = avatar_url
@@ -368,9 +379,11 @@ def api_upload_avatar():
     filename = secure_filename(file.filename)
     ext = os.path.splitext(filename)[1]
     new_name = f"me{ext}"
-    save_path = os.path.join(app.static_folder, 'assets', new_name)
+    # Save uploaded avatar into frontend assets directory
+    assets_dir = os.path.join(app.root_path, 'frontend', 'assets')
+    save_path = os.path.join(assets_dir, new_name)
     file.save(save_path)
-    url = f"/static/assets/{new_name}"
+    url = f"/assets/{new_name}"
     # Persist avatar_url
     db.update_user_profile_db('me', avatar_url=url)
     return jsonify({'url': url})
